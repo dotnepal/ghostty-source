@@ -37,6 +37,7 @@ const RepeatableReadableIO = @import("io.zig").RepeatableReadableIO;
 const RepeatableStringMap = @import("RepeatableStringMap.zig");
 pub const Path = @import("path.zig").Path;
 pub const RepeatablePath = @import("path.zig").RepeatablePath;
+pub const RepeatableTabColorPalette = @import("tab_color.zig").RepeatableTabColorPalette;
 const ClipboardCodepointMap = @import("ClipboardCodepointMap.zig");
 const KeyRemapSet = @import("../input/key_mods.zig").RemapSet;
 pub const WindowPaddingBalance = @import("../renderer/size.zig").PaddingBalance;
@@ -3688,6 +3689,87 @@ keybind: Keybinds = .{},
 ///
 /// Available since: 1.2.0
 @"macos-shortcuts": MacShortcuts = .ask,
+
+/// The tab color palette for the right-click color picker on macOS.
+///
+/// Each palette entry is a named color with optional active and inactive
+/// background/foreground colors. The format is:
+///
+///   `name:bg=#RRGGBB,fg=#RRGGBB,inactive-bg=#RRGGBB,inactive-fg=#RRGGBB`
+///
+/// All color values support hex format (`#RRGGBB` or `RRGGBB`).
+/// The `inactive-bg` and `inactive-fg` keys are optional; when omitted
+/// the inactive colors default to a dimmed version of the active colors.
+///
+/// This configuration key can be repeated to define multiple palettes.
+/// Duplicate names overwrite earlier entries with the same name.
+///
+/// Example:
+///
+///   `tab-color-palette = nord:bg=#2e3440,fg=#d8dee9`
+///   `tab-color-palette = dracula:bg=#282a36,fg=#f8f8f2,inactive-bg=#1e1f29,inactive-fg=#6272a4`
+///
+/// Available since: 1.5.0
+tab_color_palette: RepeatableTabColorPalette = .{},
+
+/// The active tab background color. Applied when this tab is the focused tab
+/// in its window. Only takes effect when `tab-color-palette` is not set or
+/// when the active tab color is not available.
+///
+/// Valid values:
+///
+///   - Hex (`#RRGGBB` or `RRGGBB`)
+///   - Named X11 color
+///   - "cell-background" to match the cell background color
+///
+/// Available since: 1.5.0
+tab_background_active: ?Color = null,
+
+/// The active tab foreground color (text color). Applied when this tab is
+/// the focused tab in its window.
+///
+/// Valid values:
+///
+///   - Hex (`#RRGGBB` or `RRGGBB`)
+///   - Named X11 color
+///   - "cell-foreground" to match the cell foreground color
+///
+/// Available since: 1.5.0
+tab_foreground_active: ?Color = null,
+
+/// The inactive tab background color. Applied to tabs that are not the
+/// focused tab in their window.
+///
+/// Valid values:
+///
+///   - Hex (`#RRGGBB` or `RRGGBB`)
+///   - Named X11 color
+///   - "cell-background" to match the cell background color
+///
+/// Available since: 1.5.0
+tab_background_inactive: ?Color = null,
+
+/// The inactive tab foreground color (text color). Applied to tabs that
+/// are not the focused tab in their window.
+///
+/// Valid values:
+///
+///   - Hex (`#RRGGBB` or `RRGGBB`)
+///   - Named X11 color
+///   - "cell-foreground" to match the cell foreground color
+///
+/// Available since: 1.5.0
+tab_foreground_inactive: ?Color = null,
+
+/// The opacity of the inactive tab background. A value of `1.0` means
+/// fully opaque (no dimming), while `0.0` means fully transparent.
+/// The value is clamped to the range `[0.01, 1.0]`.
+///
+/// This is applied on top of `tab-background-inactive` to create
+/// a dimmed appearance for inactive tabs.
+///
+/// Available since: 1.5.0
+tab_background_opacity: f64 = 1.0,
 
 /// Put every surface (tab, split, window) into a transient `systemd` scope.
 ///

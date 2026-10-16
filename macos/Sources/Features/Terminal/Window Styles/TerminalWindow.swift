@@ -643,6 +643,8 @@ class TerminalWindow: NSWindow {
         let macosWindowButtons: Ghostty.MacOSWindowButtons
         let macosTitlebarStyle: Ghostty.Config.MacOSTitlebarStyle
         let windowCornerRadius: CGFloat
+        let tabColorPalette: [Ghostty.Config.TabColorPaletteEntry]
+        let tabBackgroundOpacity: Double
 
         init() {
             self.title = nil
@@ -652,6 +654,8 @@ class TerminalWindow: NSWindow {
             self.backgroundBlur = .disabled
             self.macosTitlebarStyle = .default
             self.windowCornerRadius = 16
+            self.tabColorPalette = []
+            self.tabBackgroundOpacity = 1.0
         }
 
         init(_ config: Ghostty.Config) {
@@ -671,6 +675,9 @@ class TerminalWindow: NSWindow {
             default:
                 self.windowCornerRadius = 16
             }
+            
+            self.tabColorPalette = config.tabColorPalette
+            self.tabBackgroundOpacity = config.tabBackgroundOpacity
         }
     }
 }

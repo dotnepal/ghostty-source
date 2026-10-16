@@ -690,6 +690,85 @@ extension Ghostty {
             return MacShortcuts(rawValue: str) ?? defaultValue
         }
 
+        // MARK: - Tab Color Palette
+
+        /// A single entry in the tab color palette, representing a named palette
+        /// with active and optional inactive background/foreground colors.
+        struct TabColorPaletteEntry {
+            let name: String
+            let background: NSColor?
+            let foreground: NSColor?
+            let inactiveBackground: NSColor?
+            let inactiveForeground: NSColor?
+        }
+
+        /// The resolved tab color palette from config entries.
+        /// Each entry is a named palette for the right-click tab color picker.
+        var tabColorPalette: [TabColorPaletteEntry] {
+            guard let config = self.config else { return [] }
+            var v: ghostty_config_tab_color_palette_list_s = .init()
+            let key = "tab-color-palette"
+            guard ghostty_config_get(config, &v, key, UInt(key.lengthOfBytes(using: .utf8))) else { return [] }
+            guard v.len > 0 else { return [] }
+            let buffer = UnsafeBufferPointer(start: v.palettes, count: v.len)
+            return buffer.map { entry in
+                let nameData = Data(bytes: UnsafeRawPointer(entry.name), count: Int(entry.name_len))
+                TabColorPaletteEntry(
+                    name: String(data: nameData, encoding: .utf8) ?? "",
+                    background: NSColor(ghostty: entry.bg),
+                    foreground: NSColor(ghostty: entry.fg),
+                    inactiveBackground: entry.has_inactive_bg != 0 ? NSColor(ghostty: entry.inactive_bg) : nil,
+                    inactiveForeground: entry.has_inactive_fg != 0 ? NSColor(ghostty: entry.inactive_fg) : nil
+                )
+            }
+        }
+
+        /// Active tab background color from config (hex or "cell-background").
+        var tabBackgroundActive: NSColor? {
+            guard let config = self.config else { return nil }
+            var v: ghostty_config_color_s = .init()
+            let key = "tab-background-active"
+            guard ghostty_config_get(config, &v, key, UInt(key.lengthOfBytes(using: .utf8))) else { return nil }
+            return NSColor(ghostty: v)
+        }
+
+        /// Active tab foreground color from config (hex or "cell-foreground").
+        var tabForegroundActive: NSColor? {
+            guard let config = self.config else { return nil }
+            var v: ghostty_config_color_s = .init()
+            let key = "tab-foreground-active"
+            guard ghostty_config_get(config, &v, key, UInt(key.lengthOfBytes(using: .utf8))) else { return nil }
+            return NSColor(ghostty: v)
+        }
+
+        /// Inactive tab background color from config (hex or "cell-background").
+        var tabBackgroundInactive: NSColor? {
+            guard let config = self.config else { return nil }
+            var v: ghostty_config_color_s = .init()
+            let key = "tab-background-inactive"
+            guard ghostty_config_get(config, &v, key, UInt(key.lengthOfBytes(using: .utf8))) else { return nil }
+            return NSColor(ghostty: v)
+        }
+
+        /// Inactive tab foreground color from config (hex or "cell-foreground").
+        var tabForegroundInactive: NSColor? {
+            guard let config = self.config else { return nil }
+            var v: ghostty_config_color_s = .init()
+            let key = "tab-foreground-inactive"
+            guard ghostty_config_get(config, &v, key, UInt(key.lengthOfBytes(using: .utf8))) else { return nil }
+            return NSColor(ghostty: v)
+        }
+
+        /// Inactive tab background opacity factor (0 = fully transparent, 1 = fully opaque).
+        /// Clamped to [0.01, 1.0].
+        var tabBackgroundOpacity: Double {
+            guard let config = self.config else { return 1.0 }
+            var v: Double = 1.0
+            let key = "tab-background-opacity"
+            _ = ghostty_config_get(config, &v, key, UInt(key.lengthOfBytes(using: .utf8)))
+            return v
+        }
+
         var abnormalCommandExitRuntime: Duration {
             let defaultValue: Duration = .milliseconds(250)
             guard let config = self.config else { return defaultValue }

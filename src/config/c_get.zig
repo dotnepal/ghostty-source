@@ -2,9 +2,11 @@ const std = @import("std");
 
 const key = @import("key.zig");
 const Config = @import("Config.zig");
+const tab_color = @import("tab_color.zig");
 const Color = Config.Color;
 const Key = key.Key;
 const Value = key.Value;
+const RepeatableTabColorPalette = Config.RepeatableTabColorPalette;
 
 /// Get a value from the config by key into the given pointer. This is
 /// specifically for C-compatible APIs. If you're using Zig, just access
@@ -237,4 +239,22 @@ test "c_get: split-preserve-zoom" {
     c.@"split-preserve-zoom".navigation = true;
     try testing.expect(get(&c, .@"split-preserve-zoom", @ptrCast(&bits)));
     try testing.expectEqual(@as(c_uint, 1), bits);
+}
+
+test "c_get: tab_color_palette" {
+    const testing = std.testing;
+    const alloc = testing.allocator;
+
+    var c = try Config.default(alloc);
+    defer c.deinit();
+
+    // Empty palette should return empty list
+    const empty_ptr: *const tab_color.TabColorPaletteListC = @ptrCast(&c.@"tab-color-palette");
+    try testing.expectEqual(@as(usize, 0), empty_ptr.len);
+
+    // Parse a palette entry
+    try c.@"tab-color-palette".parseCLI(alloc, "nord:bg=#2e3440,fg=#d8dee9");
+
+    const ptr: *const tab_color.TabColorPaletteListC = @ptrCast(&c.@"tab-color-palette");
+    try testing.expectEqual(@as(usize, 1), ptr.len);
 }

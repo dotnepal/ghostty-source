@@ -183,3 +183,24 @@ private struct TabColorSwatch: View {
         .help(color.localizedName)
     }
 }
+
+// MARK: - Colored Tabs (Wave 1)
+
+/// Resolved tab color style derived from the Ghostty config.
+/// Used to paint tab backgrounds and foregrounds.
+struct TabColorStyle {
+    let activeBackground: NSColor?
+    let activeForeground: NSColor?
+    let inactiveBackground: NSColor?
+    let inactiveForeground: NSColor?
+    let inactiveOpacity: Double
+
+    /// The default style — no tab coloring applied (Ghostty default behavior).
+    static let `default` = TabColorStyle(
+        activeBackground: nil,
+        activeForeground: nil,
+        inactiveBackground: nil,
+        inactiveForeground: nil,
+        inactiveOpacity: 1.0
+    )
+}

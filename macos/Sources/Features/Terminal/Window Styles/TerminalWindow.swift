@@ -27,10 +27,16 @@ class TerminalWindow: NSWindow {
 
     /// Visual indicator that mirrors the selected tab color.
     private lazy var tabColorIndicator: NSHostingView<TabColorIndicatorView> = {
-        let view = NSHostingView(rootView: TabColorIndicatorView(tabColor: tabColor))
+        let view = NSHostingView(rootView: TabColorIndicatorView(tabColor: resolvedTabColor))
         view.translatesAutoresizingMaskIntoConstraints = false
         return view
     }()
+
+    /// Resolved display color for the tab color indicator.
+    /// Uses the active tab color from tabColorStyle if available.
+    private var resolvedTabColor: NSColor? {
+        derivedConfig.tabColorStyle.activeBackground
+    }
 
     /// The configuration derived from the Ghostty config so we don't need to rely on references.
     private(set) var derivedConfig: DerivedConfig = .init()
@@ -64,8 +70,11 @@ class TerminalWindow: NSWindow {
     var tabColor: TerminalTabColor = .none {
         didSet {
             guard tabColor != oldValue else { return }
-            tabColorIndicator.rootView = TabColorIndicatorView(tabColor: tabColor)
+        tabColorIndicator.rootView = TabColorIndicatorView(tabColor: resolvedTabColor ?? tabColor.displayColor)
             invalidateRestorableState()
+
+            // Paint tabs when the color changes
+            paintTabs()
         }
     }
 
@@ -159,7 +168,7 @@ class TerminalWindow: NSWindow {
         // Setup the accessory view for tabs that shows our keyboard shortcuts,
         // zoomed state, etc. Note I tried to use SwiftUI here but ran into issues
         // where buttons were not clickable on macOS 15.
-        tabColorIndicator.rootView = TabColorIndicatorView(tabColor: tabColor)
+        tabColorIndicator.rootView = TabColorIndicatorView(tabColor: resolvedTabColor)
 
         let stackView = NSStackView()
         stackView.orientation = .horizontal
@@ -207,6 +216,9 @@ class TerminalWindow: NSWindow {
         super.resignKey()
         resetZoomTabButton.contentTintColor = .secondaryLabelColor
         tabTitleEditor.finishEditing(commit: true)
+
+        // Paint tabs when focus changes (tab may have been switched)
+        paintTabs()
     }
 
     override func becomeMain() {
@@ -220,6 +232,9 @@ class TerminalWindow: NSWindow {
             tabBarDidDisappear()
         }
         viewModel.isMainWindow = true
+
+        // Paint tabs with the resolved color style
+        paintTabs()
     }
 
     override func resignMain() {
@@ -310,6 +325,9 @@ class TerminalWindow: NSWindow {
             removeTitlebarAccessoryViewController(at: idx)
         }
 
+        // Paint tabs when the tab bar appears
+        paintTabs()
+
         // We don't need to do this with the update accessory. I don't know why but
         // everything works fine.
     }
@@ -318,6 +336,44 @@ class TerminalWindow: NSWindow {
         if styleMask.contains(.titled) {
             if titlebarAccessoryViewControllers.firstIndex(of: resetZoomAccessory) == nil {
                 addTitlebarAccessoryViewController(resetZoomAccessory)
+            }
+        }
+    }
+
+    // MARK: Tab Color Painting
+
+    /// Paints all visible tabs with the resolved tab color style.
+    /// Called whenever the active tab changes, appearance changes, or config is reloaded.
+    func paintTabs() {
+        let style = derivedConfig.tabColorStyle
+        guard let tabGroup = tabGroup, tabGroup.isTabBarVisible else { return }
+
+        // Find the NSTabBar in our tab bar accessory view
+        guard tabBarView != nil else { return }
+
+        // Find each NSTabButton in the tab bar and paint its _backgroundView
+        for window in tabGroup.windows {
+            // Find the NSTabButton for this window's tab
+            // Walk up from the tab's accessory view to find the NSTabButton
+            guard let accessoryView = window.tab.accessoryView,
+                  let button = accessoryView.superview?.superview?.firstDescendant(withClassName: "NSTabButton")
+            else { continue }
+
+            let isActive = (window === tabGroup.selectedWindow)
+            let color: NSColor? = isActive
+                ? (style.activeBackground ?? style.inactiveBackground)
+                : style.inactiveBackground
+
+            // Paint the tab's background view
+            if let backgroundView = button.firstDescendant(withID: "_backgroundView") {
+                backgroundView.wantsLayer = true
+                backgroundView.layer?.backgroundColor = color?.cgColor
+            }
+
+            // Paint the tab button's background layer
+            if let bgView = button.firstDescendant(withClassName: "NSTabButtonBackground") {
+                bgView.wantsLayer = true
+                bgView.layer?.backgroundColor = color?.cgColor
             }
         }
     }
@@ -517,6 +573,12 @@ class TerminalWindow: NSWindow {
         textfield.frame.size = properSize
     }
 
+    /// Update the window's derived config from the Ghostty app config.
+    /// Called by the controller when the app config changes.
+    func updateDerivedConfig(from appConfig: Ghostty.Config) {
+        derivedConfig = DerivedConfig(appConfig)
+    }
+
     /// This is called by the controller when there is a need to reset the window appearance.
     func syncAppearance(_ surfaceConfig: Ghostty.SurfaceView.DerivedConfig) {
         // If our window is not visible, then we do nothing. Some things such as blurring
@@ -557,6 +619,9 @@ class TerminalWindow: NSWindow {
             let backgroundColor = preferredBackgroundColor ?? NSColor(surfaceConfig.backgroundColor)
             self.backgroundColor = backgroundColor.withAlphaComponent(1)
         }
+
+        // Paint tabs with the resolved color style (deferred color scheme update handles separately)
+        paintTabs()
     }
 
     /// The preferred window background color. The current window background color may not be set
@@ -645,6 +710,7 @@ class TerminalWindow: NSWindow {
         let windowCornerRadius: CGFloat
         let tabColorPalette: [Ghostty.Config.TabColorPaletteEntry]
         let tabBackgroundOpacity: Double
+        let tabColorStyle: TabColorStyle
 
         init() {
             self.title = nil
@@ -656,6 +722,7 @@ class TerminalWindow: NSWindow {
             self.windowCornerRadius = 16
             self.tabColorPalette = []
             self.tabBackgroundOpacity = 1.0
+            self.tabColorStyle = .default
         }
 
         init(_ config: Ghostty.Config) {
@@ -678,6 +745,15 @@ class TerminalWindow: NSWindow {
 
             self.tabColorPalette = config.tabColorPalette
             self.tabBackgroundOpacity = config.tabBackgroundOpacity
+            self.tabColorStyle = TabColorStyle.resolve(
+                palette: config.tabColorPalette,
+                pickedColor: .none,
+                bgActive: config.tabBackgroundActive,
+                fgActive: config.tabForegroundActive,
+                bgInactive: config.tabBackgroundInactive,
+                fgInactive: config.tabForegroundInactive,
+                bgOpacity: config.tabBackgroundOpacity
+            )
         }
     }
 }
@@ -743,13 +819,13 @@ extension TerminalWindow {
 /// A small circle indicator displayed in the tab accessory view that shows
 /// the user-assigned tab color. When no color is set, the view is hidden.
 private struct TabColorIndicatorView: View {
-    /// The tab color to display.
-    let tabColor: TerminalTabColor
+    /// The resolved tab color to display (NSColor or nil for no color).
+    let tabColor: NSColor?
 
     var body: some View {
-        if let color = tabColor.displayColor {
+        if let color = tabColor {
             Circle()
-                .fill(Color(color))
+                .fill(Color(nsColor: color))
                 .frame(width: 6, height: 6)
         } else {
             Circle()

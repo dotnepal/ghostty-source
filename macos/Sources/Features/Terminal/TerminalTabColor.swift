@@ -203,4 +203,46 @@ struct TabColorStyle {
         inactiveForeground: nil,
         inactiveOpacity: 1.0
     )
+
+    /// Resolve tab color style from config values.
+    ///
+    /// Resolution order:
+    /// 1. Picked palette entry color (from right-click picker, stored as TerminalTabColor)
+    /// 2. tab-*-active / tab-*-inactive config keys
+    /// 3. Ghostty default (no coloring)
+    // swiftlint:disable:function_parameter_count
+    static func resolve(
+        palette: [Ghostty.Config.TabColorPaletteEntry],
+        pickedColor: TerminalTabColor,
+        bgActive: NSColor?,
+        fgActive: NSColor?,
+        bgInactive: NSColor?,
+        fgInactive: NSColor?,
+        bgOpacity: Double
+    ) -> TabColorStyle {
+        // If user has picked a specific color via right-click picker, use it
+        if pickedColor != .none, let displayColor = pickedColor.displayColor {
+            return TabColorStyle(
+                activeBackground: displayColor,
+                activeForeground: fgActive,
+                inactiveBackground: bgInactive,
+                inactiveForeground: fgInactive,
+                inactiveOpacity: bgOpacity
+            )
+        }
+
+        // If a palette is configured, use the first entry as the primary style
+        if let first = palette.first {
+            return TabColorStyle(
+                activeBackground: first.background,
+                activeForeground: first.foreground,
+                inactiveBackground: first.inactiveBackground ?? bgInactive,
+                inactiveForeground: first.inactiveForeground ?? fgInactive,
+                inactiveOpacity: bgOpacity
+            )
+        }
+
+        // No config — Ghostty default behavior
+        return .default
+    }
 }

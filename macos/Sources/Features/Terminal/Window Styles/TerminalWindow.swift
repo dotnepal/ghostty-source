@@ -675,7 +675,7 @@ class TerminalWindow: NSWindow {
             default:
                 self.windowCornerRadius = 16
             }
-            
+
             self.tabColorPalette = config.tabColorPalette
             self.tabBackgroundOpacity = config.tabBackgroundOpacity
         }

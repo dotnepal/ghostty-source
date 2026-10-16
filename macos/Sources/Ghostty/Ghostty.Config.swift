@@ -713,12 +713,28 @@ extension Ghostty {
             let buffer = UnsafeBufferPointer(start: v.palettes, count: v.len)
             return buffer.map { entry in
                 let nameData = Data(bytes: UnsafeRawPointer(entry.name), count: Int(entry.name_len))
-                TabColorPaletteEntry(
+                let bgR = entry.bg.0, bgG = entry.bg.1, bgB = entry.bg.2
+                let fgR = entry.fg.0, fgG = entry.fg.1, fgB = entry.fg.2
+                let bg = ghostty_config_color_s(r: bgR, g: bgG, b: bgB)
+                let fg = ghostty_config_color_s(r: fgR, g: fgG, b: fgB)
+                let inactive_bg: ghostty_config_color_s
+                if entry.has_inactive_bg != 0 {
+                    inactive_bg = ghostty_config_color_s(r: entry.inactive_bg.0, g: entry.inactive_bg.1, b: entry.inactive_bg.2)
+                } else {
+                    inactive_bg = ghostty_config_color_s(r: 0, g: 0, b: 0)
+                }
+                let inactive_fg: ghostty_config_color_s
+                if entry.has_inactive_fg != 0 {
+                    inactive_fg = ghostty_config_color_s(r: entry.inactive_fg.0, g: entry.inactive_fg.1, b: entry.inactive_fg.2)
+                } else {
+                    inactive_fg = ghostty_config_color_s(r: 0, g: 0, b: 0)
+                }
+                return TabColorPaletteEntry(
                     name: String(data: nameData, encoding: .utf8) ?? "",
-                    background: NSColor(ghostty: entry.bg),
-                    foreground: NSColor(ghostty: entry.fg),
-                    inactiveBackground: entry.has_inactive_bg != 0 ? NSColor(ghostty: entry.inactive_bg) : nil,
-                    inactiveForeground: entry.has_inactive_fg != 0 ? NSColor(ghostty: entry.inactive_fg) : nil
+                    background: NSColor(ghostty: bg),
+                    foreground: NSColor(ghostty: fg),
+                    inactiveBackground: entry.has_inactive_bg != 0 ? NSColor(ghostty: inactive_bg) : nil,
+                    inactiveForeground: entry.has_inactive_fg != 0 ? NSColor(ghostty: inactive_fg) : nil
                 )
             }
         }

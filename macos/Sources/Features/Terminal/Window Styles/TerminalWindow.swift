@@ -402,12 +402,14 @@ class TerminalWindow: NSWindow {
     }
 
     /// In bottom mode, hides the native tab bar while keeping the tab group so tabs
-    /// stay grouped and selectable (the bottom strip replaces it). `toggleTabBar`
-    /// flips the state for the whole group, so only call it while the bar is visible.
+    /// stay grouped and selectable (the bottom strip replaces it). The bar is a
+    /// titlebar accessory, so hiding the accessory is safe to repeat. (`toggleTabBar`
+    /// does not work here: the group keeps reporting the bar as visible.)
     private func hideNativeTabBarIfNeeded() {
-        guard derivedConfig.macosTabsLocation == .bottom,
-              let tabGroup, tabGroup.isTabBarVisible else { return }
-        toggleTabBar(nil)
+        guard derivedConfig.macosTabsLocation == .bottom else { return }
+        for accessory in titlebarAccessoryViewControllers where isTabBar(accessory) {
+            accessory.isHidden = true
+        }
     }
 
     /// Refreshes the bottom tab strip of every window in this window's tab group.

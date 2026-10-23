@@ -67,6 +67,19 @@ enum TerminalTabColor: Int, CaseIterable, Codable {
         }
     }
 
+    /// The `tab-color-palette` entry whose name matches this color's name, ignoring case.
+    /// A later entry with the same name wins.
+    func paletteEntry(in palette: [Ghostty.Config.TabColorPaletteEntry]) -> Ghostty.Config.TabColorPaletteEntry? {
+        guard self != .none else { return nil }
+        return palette.last { $0.name.caseInsensitiveCompare(localizedName) == .orderedSame }
+    }
+
+    /// The color to show for this tab color: the matching palette entry's background,
+    /// or the built-in color.
+    func displayColor(palette: [Ghostty.Config.TabColorPaletteEntry]) -> NSColor? {
+        paletteEntry(in: palette)?.background ?? displayColor
+    }
+
     func swatchImage(selected: Bool) -> NSImage {
         let size = NSSize(width: 18, height: 18)
         return NSImage(size: size, flipped: false) { rect in
@@ -111,10 +124,16 @@ enum TerminalTabColor: Int, CaseIterable, Codable {
 /// Used as a custom view inside an NSMenuItem in the tab context menu.
 struct TabColorMenuView: View {
     @State private var currentSelection: TerminalTabColor
+    let palette: [Ghostty.Config.TabColorPaletteEntry]
     let onSelect: (TerminalTabColor) -> Void
 
-    init(selectedColor: TerminalTabColor, onSelect: @escaping (TerminalTabColor) -> Void) {
+    init(
+        selectedColor: TerminalTabColor,
+        palette: [Ghostty.Config.TabColorPaletteEntry] = [],
+        onSelect: @escaping (TerminalTabColor) -> Void
+    ) {
         self._currentSelection = State(initialValue: selectedColor)
+        self.palette = palette
         self.onSelect = onSelect
     }
 
@@ -128,6 +147,7 @@ struct TabColorMenuView: View {
                     ForEach(row, id: \.self) { color in
                         TabColorSwatch(
                             color: color,
+                            displayColor: color.displayColor(palette: palette),
                             isSelected: color == currentSelection
                         ) {
                             currentSelection = color
@@ -162,6 +182,7 @@ struct TabColorMenuView: View {
 /// A single color swatch button in the tab color palette.
 private struct TabColorSwatch: View {
     let color: TerminalTabColor
+    let displayColor: NSColor?
     let isSelected: Bool
     let action: () -> Void
 
@@ -171,7 +192,7 @@ private struct TabColorSwatch: View {
                 if color == .none {
                     Image(systemName: isSelected ? "circle.slash" : "circle")
                         .foregroundStyle(.secondary)
-                } else if let displayColor = color.displayColor {
+                } else if let displayColor {
                     Image(systemName: isSelected ? "checkmark.circle.fill" : "circle.fill")
                         .foregroundStyle(Color(nsColor: displayColor))
                 }
@@ -245,9 +266,7 @@ struct TabColorStyle {
         var inactiveFg: NSColor?
 
         if pickedColor != .none {
-            // Later palette entries with the same name overwrite earlier ones.
-            let name = pickedColor.localizedName
-            if let entry = palette.last(where: { $0.name.caseInsensitiveCompare(name) == .orderedSame }) {
+            if let entry = pickedColor.paletteEntry(in: palette) {
                 activeBg = entry.background
                 activeFg = entry.foreground
                 inactiveBg = entry.inactiveBackground

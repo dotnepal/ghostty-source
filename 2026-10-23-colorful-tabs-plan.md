@@ -4,7 +4,7 @@ Single source of truth for this feature. Replaces `colorful-tabs-plan.md`,
 `colorful-tabs-plan-claude.md` and `HANDOFF.md`.
 The frozen spec (key names, types, C struct layout) stays in `docs/colorful-tabs-contract.md`.
 
-Status: Wave 0 done, Wave 1 done (except push), Wave 2 Task 1 partly done. Nothing pushed yet.
+Status: Wave 0 done, Wave 1 and 2 done (except push), Wave 3 not started. Nothing pushed yet.
 Last synced against branch `colorful-tabs` at `7bd0efd` (2026-10-23).
 Source analysed: `ghostty-org/ghostty` at `b3dc3d7` (2026-10-15).
 Repo: `dotnepal/ghostty-source` (a clone of ghostty-org/ghostty, not a GitHub fork yet).
@@ -100,15 +100,18 @@ light/dark appearance is honoured.
 - [ ] Push. Committed; branch has no upstream. Deferred to the end (decision 11).
 
 ### Wave 2: tab rendering
-- [ ] **Painting:** partly done (`7bd0efd`). `paintTabs()` paints `_backgroundView` / `NSTabButtonBackground` and repaints on becomeMain, resignKey, tab bar appear and `syncAppearance`. Missing:
-  - [ ] title (foreground) color.
-  - [ ] `tab-background-opacity` not applied when painting.
-  - [ ] Sequoia titlebar tabs: verify painting in `TitlebarTabsVenturaTerminalWindow` separately from native tabs.
-  - [ ] Tahoe titlebar tabs: keep `TitlebarTabsTahoeTerminalWindow` compiling and fall back to the dot until tested on macOS 26.
-  - [ ] repaint on appearance change.
-- [ ] **Palettes and fallback:** right-click swatches use configured palettes; keep saved/restored and undo tab colors working; detect unpaintable tabs (hidden titlebar, missing private views) and fall back to the dot.
-- [ ] Review, resolve overlaps in `TerminalWindow.swift`, check every must-have against the code.
-- [ ] Commit and push.
+- [x] **Painting:** done, unverified on screen (commit after `455da08`). `paintTabs()` resolves and paints each tab separately and:
+  - [x] colors the title through public `tab.attributedTitle` (`attributedTitle` uses the tab foreground; the default labels apply when unset).
+  - [x] applies `tab-background-opacity` as alpha on the painted background.
+  - [x] Sequoia titlebar tabs: `TitlebarTabsVenturaTerminalWindow` no longer overwrites the active tab with the very-dark-background color when a tab color is configured. Needs a look on screen.
+  - [x] Tahoe titlebar tabs: no Tahoe-specific code; if `NSTabButton` isn't found, painting reports failure and the dot is shown. Still untested on macOS 26.
+  - [x] repaints on `effectiveAppearance` change and on accessibility display option changes.
+  - [x] with no tab colors configured, AppKit's own painting is left alone; painted layers are reset once if the style goes back to default.
+  - [x] the button is now found by walking up from the tab's accessory view to its own `NSTabButton`.
+- [x] **Palettes and fallback:** right-click swatches show the matching `tab-color-palette` entry's background (matched by name). Saved/restored and undo colors need no change: they store the enum and assign `tabColor`, which repaints. A tab that can't be painted shows the dot in its active background.
+  - Limitation: palette entries whose names don't match one of the nine built-in color names have no swatch (storage still holds the enum; see the matching decision in `TabColorStyle.resolve`).
+- [x] Review, resolve overlaps in `TerminalWindow.swift`, check every must-have against the code. (Build and SwiftLint are clean; behavior is unchecked until Wave 3.)
+- [x] Commit. [ ] Push (deferred, decision 11).
 
 ### Wave 3: verify on Sam's Mac
 - [ ] On Sequoia, build and try each style: native, `tabs`, `transparent`, `hidden`; light and dark; Reduce Transparency and Increase Contrast on.

@@ -147,3 +147,37 @@ window ref).
 ## Subagents
 
 A1, A2, B1, B2, C1 (5 total, the limit).
+
+## Outcome (all phases done)
+
+PRs merged into `feature/macos-tabs-location`: #10 (Phase 1), #11 (Phase 2),
+#12 (Phase 3), #13 (Phase 4). Phase 0 (#4) was a direct commit.
+
+- CI was skipped by Sam's instruction: the required job runs on the upstream
+  runner profile `namespace-profile-ghostty-xsm`, which this fork does not
+  have, so it stayed queued. Every PR was merged on the strength of
+  `zig build` and `nu macos/build.nu` alone.
+- AppleScript checks on the debug build (Phase 1 in top mode with the spike,
+  Phase 4 launched with `--macos-tabs-location=bottom`): tabs stay grouped,
+  `select tab`, `new tab` and `close tab` work. The first Phase 1 attempt hung
+  once before any window existed; the cause is unknown.
+- The config key is documented in `Config.zig` (`macos-tabs-location`,
+  `Available since: 1.4.0`). `macos-tabs-location = bottom` can also be passed
+  as `--macos-tabs-location=bottom` on the command line.
+
+### Not verified (left for the final manual check)
+
+- How the strip actually looks (no screenshot was taken).
+- That the native tab bar is really hidden in bottom mode.
+- ⌘1/⌘2 and Ctrl+Tab through the keyboard, and reorder by keybind.
+- Reorder by mouse: it relied on the native bar and cannot happen in bottom
+  mode; there is no drag-reorder on the strip in v1.
+- Single-tab windows: the strip collapses to zero height, like the native bar.
+- Fullscreen, splits, window restoration and the titlebar styles other than
+  the default.
+- Top mode is unchanged by design but was not re-checked by hand.
+
+### Known gaps in v1
+
+- No drag-reorder and no right-click tab-color picker on the strip.
+- The strip is drawn without the titlebar color dot.

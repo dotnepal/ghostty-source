@@ -289,7 +289,11 @@ class TerminalWindow: NSWindow {
 
     @discardableResult
     func beginInlineTabTitleEdit(for targetWindow: NSWindow) -> Bool {
-        tabTitleEditor.beginEditing(for: targetWindow)
+        // The native tab bar is hidden in bottom mode, so there is no visible tab to
+        // edit in place. Callers fall back to the title prompt.
+        if derivedConfig.macosTabsLocation == .bottom { return false }
+
+        return tabTitleEditor.beginEditing(for: targetWindow)
     }
 
     @objc private func renameTabFromContextMenu(_ sender: NSMenuItem) {

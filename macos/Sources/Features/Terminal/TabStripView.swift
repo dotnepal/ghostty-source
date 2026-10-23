@@ -17,6 +17,10 @@ final class TabStripView: NSView {
     /// Called when the "+" button is clicked.
     var onNewTab: (() -> Void)?
 
+    /// Called on right-click with the window of the tab that was clicked. Returns
+    /// the context menu to show, or nil for none.
+    var onContextMenu: ((NSWindow) -> NSMenu?)?
+
     private let tabsStack = NSStackView()
     private let newTabButton = NSButton()
     private lazy var heightConstraint = heightAnchor.constraint(equalToConstant: 0)
@@ -86,6 +90,9 @@ final class TabStripView: NSView {
             tab.onClick = { [weak self] window in
                 self?.onSelect?(window)
             }
+            tab.onContextMenu = { [weak self] window in
+                self?.onContextMenu?(window)
+            }
             tabsStack.addArrangedSubview(tab)
         }
 
@@ -108,6 +115,7 @@ final class TabStripView: NSView {
 /// A single tab button inside `TabStripView`.
 private final class TabStripTabView: NSView {
     var onClick: ((NSWindow) -> Void)?
+    var onContextMenu: ((NSWindow) -> NSMenu?)?
 
     private let item: TabStripItem
     private let titleLabel = NSTextField(labelWithString: "")
@@ -169,6 +177,11 @@ private final class TabStripTabView: NSView {
         let point = convert(event.locationInWindow, from: nil)
         guard bounds.contains(point), let window = item.window else { return }
         onClick?(window)
+    }
+
+    override func menu(for event: NSEvent) -> NSMenu? {
+        guard let window = item.window else { return nil }
+        return onContextMenu?(window)
     }
 
     override func viewDidChangeEffectiveAppearance() {

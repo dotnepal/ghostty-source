@@ -275,14 +275,7 @@ class TerminalWindow: NSWindow {
         }
         viewModel.isMainWindow = true
 
-        // In bottom mode, hide the native tab bar while keeping the tab group so
-        // tabs stay grouped and selectable (the bottom strip replaces it).
-        // `toggleTabBar` flips the state for the whole group, so only call it
-        // while the bar is visible.
-        if derivedConfig.macosTabsLocation == .bottom,
-           let tabGroup, tabGroup.isTabBarVisible {
-            toggleTabBar(nil)
-        }
+        hideNativeTabBarIfNeeded()
 
         // Paint tabs with the resolved color style
         paintTabs()
@@ -408,11 +401,27 @@ class TerminalWindow: NSWindow {
         }
     }
 
+    /// In bottom mode, hides the native tab bar while keeping the tab group so tabs
+    /// stay grouped and selectable (the bottom strip replaces it). The bar is a
+    /// titlebar accessory, so hiding the accessory is safe to repeat. (`toggleTabBar`
+    /// does not work here: the group keeps reporting the bar as visible.)
+    private func hideNativeTabBarIfNeeded() {
+        guard derivedConfig.macosTabsLocation == .bottom else { return }
+        for accessory in titlebarAccessoryViewControllers where isTabBar(accessory) {
+            accessory.isHidden = true
+        }
+    }
+
     /// Refreshes the bottom tab strip of every window in this window's tab group.
     /// Each window owns its own strip, so all of them are rebuilt. This is a no-op
     /// when this window has no strip (`macos-tabs-location = top`).
     func updateTabStrips() {
         guard (contentView as? TerminalViewContainer)?.tabStripView != nil else { return }
+
+        // AppKit shows the native bar a runloop turn after a tab is added, so
+        // check now and once more after it has settled.
+        hideNativeTabBarIfNeeded()
+        DispatchQueue.main.async { [weak self] in self?.hideNativeTabBarIfNeeded() }
 
         let windows = tabGroup?.windows ?? [self]
         let selected = tabGroup?.selectedWindow

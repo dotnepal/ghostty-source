@@ -272,6 +272,13 @@ class TerminalWindow: NSWindow {
         }
         viewModel.isMainWindow = true
 
+        // Spike: hide the native tab bar while keeping the tab group, to check that
+        // tabs stay grouped and selectable. `toggleTabBar` flips the state for the
+        // whole group, so only call it while the bar is visible.
+        if let tabGroup, tabGroup.isTabBarVisible {
+            toggleTabBar(nil)
+        }
+
         // Paint tabs with the resolved color style
         paintTabs()
     }

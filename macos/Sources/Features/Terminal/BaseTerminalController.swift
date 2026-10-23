@@ -62,6 +62,18 @@ class BaseTerminalController: NSWindowController,
     /// True when any surface in this controller currently has an active bell.
     @Published private(set) var bell: Bool = false
 
+    /// Whether the window floats on top of other windows.
+    @Published private(set) var isFloatingOnTop: Bool = false
+
+    /// The latest float on top change, cleared shortly after it is set.
+    @Published private(set) var floatOnTopToast: FloatOnTopToast?
+
+    /// Observes the window level so the action and the menu item are both covered.
+    private var windowLevelCancellable: AnyCancellable?
+
+    /// Clears `floatOnTopToast` after it has been shown for a moment.
+    private var floatOnTopToastClear: DispatchWorkItem?
+
     /// Whether the terminal surface should focus when the mouse is over it.
     var focusFollowsMouse: Bool {
         self.derivedConfig.focusFollowsMouse
@@ -1170,6 +1182,24 @@ class BaseTerminalController: NSWindowController,
 
         // Set our update overlay state
         updateOverlayIsVisible = defaultUpdateOverlayVisibility()
+
+        // Track whether the window floats. The initial state, e.g. a saved default
+        // level, is read here without a message; only later changes show one.
+        isFloatingOnTop = window.level == .floating
+        windowLevelCancellable = window.publisher(for: \.level, options: [.new])
+            .sink { [weak self] level in self?.windowLevelDidChange(level) }
+    }
+
+    private func windowLevelDidChange(_ level: NSWindow.Level) {
+        let floating = level == .floating
+        guard floating != isFloatingOnTop else { return }
+        isFloatingOnTop = floating
+
+        floatOnTopToast = FloatOnTopToast(isOn: floating)
+        floatOnTopToastClear?.cancel()
+        let clear = DispatchWorkItem { [weak self] in self?.floatOnTopToast = nil }
+        floatOnTopToastClear = clear
+        DispatchQueue.main.asyncAfter(deadline: .now() + 1.5, execute: clear)
     }
 
     func defaultUpdateOverlayVisibility() -> Bool {

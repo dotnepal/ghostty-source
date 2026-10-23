@@ -663,6 +663,14 @@ extension Ghostty {
             return v
         }
 
+        var macosFloatOnTopIndicator: Bool {
+            guard let config = self.config else { return true }
+            var v = true
+            let key = "macos-float-on-top-indicator"
+            _ = ghostty_config_get(config, &v, key, UInt(key.lengthOfBytes(using: .utf8)))
+            return v
+        }
+
         var macosAppleScript: Bool {
             guard let config = self.config else { return true }
             var v = false

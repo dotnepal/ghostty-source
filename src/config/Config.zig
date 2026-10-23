@@ -3581,6 +3581,15 @@ keybind: Keybinds = .{},
 /// you may want to disable it.
 @"macos-secure-input-indication": bool = true,
 
+/// If true, Ghostty shows when a window floats on top of other windows: a pin
+/// badge while it does, and a brief message when the `toggle_window_float_on_top`
+/// action or the Float on Top menu item changes it.
+///
+/// Set this to false if you don't want any indication.
+///
+/// Available since: 1.4.0
+@"macos-float-on-top-indicator": bool = true,
+
 /// If true, Ghostty exposes and handles the built-in AppleScript dictionary
 /// on macOS.
 ///

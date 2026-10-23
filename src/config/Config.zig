@@ -3709,6 +3709,42 @@ keybind: Keybinds = .{},
 ///   `tab-color-palette = nord:bg=#2e3440,fg=#d8dee9`
 ///   `tab-color-palette = dracula:bg=#282a36,fg=#f8f8f2,inactive-bg=#1e1f29,inactive-fg=#6272a4`
 ///
+/// Walkthrough:
+///
+/// The right-click color picker has nine swatches: blue, purple, pink, red,
+/// orange, yellow, green, teal and graphite. An entry changes the swatch with
+/// the same name, ignoring case. Swatches without an entry keep their system
+/// color, and an entry with any other name has no swatch. Names may only
+/// contain letters and digits. To change the look of the picker swatches:
+///
+///   `tab-color-palette = blue:bg=#5e81ac,fg=#ffffff`
+///   `tab-color-palette = red:bg=#bf616a,fg=#ffffff`
+///   `tab-color-palette = graphite:bg=#4c566a,fg=#eceff4,inactive-bg=#3b4252,inactive-fg=#a0a8b8`
+///
+/// The colors of a tab are chosen like this:
+///
+///   1. If a color is picked for the tab, the entry with the same name is
+///      used. With no such entry, the background is the system color and the
+///      text color is `tab-foreground-active` (`tab-foreground-inactive` when
+///      the tab is not selected).
+///   2. If no color is picked, the `tab-background-*` and `tab-foreground-*`
+///      keys are used.
+///   3. If none of those are set, tabs look the same as they always have.
+///
+/// Because of the first rule, an entry's `fg` is used for a picked tab even if
+/// `tab-foreground-active` is set. Inactive colors that are not set are the
+/// active colors dimmed to 65%.
+///
+/// These are applied on top, using the macOS accessibility settings: Reduce
+/// Transparency makes tab backgrounds fully opaque, and Increase Contrast
+/// makes text black or white when its contrast ratio with the background is
+/// below 4.5:1. Tab colors also follow the light and dark appearance.
+///
+/// Colors are painted wherever macOS shows a tab bar, and macOS hides the bar
+/// when a window has only one tab. If a tab can't be painted, a small dot in
+/// its color is shown instead. After editing the configuration, reload it with
+/// `Cmd+Shift+,`.
+///
 /// Available since: 1.5.0
 @"tab-color-palette": RepeatableTabColorPalette = .{},
 

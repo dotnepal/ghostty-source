@@ -4,7 +4,7 @@ Single source of truth for this feature. Replaces `colorful-tabs-plan.md`,
 `colorful-tabs-plan-claude.md` and `HANDOFF.md`.
 The frozen spec (key names, types, C struct layout) stays in `docs/colorful-tabs-contract.md`.
 
-Status: Wave 0 done, Wave 1 and 2 done (except push), Wave 3 not started. Nothing pushed yet.
+Status: Wave 0 done, Waves 0-3 done on Sequoia; Tahoe untested (skipped). Pushed to `origin/colorful-tabs`. Nothing pushed yet.
 Last synced against branch `colorful-tabs` at `7bd0efd` (2026-10-23).
 Source analysed: `ghostty-org/ghostty` at `b3dc3d7` (2026-10-15).
 Repo: `dotnepal/ghostty-source` (a clone of ghostty-org/ghostty, not a GitHub fork yet).
@@ -87,7 +87,7 @@ light/dark appearance is honoured.
 - [x] Branch `colorful-tabs` created from `main`.
 - [x] Zig 0.16.0 and build tools installed; core and app build.
 - [x] Contract frozen in `docs/colorful-tabs-contract.md` (2026-10-16). Still untracked: not committed.
-- [ ] GitHub fork: deferred until the feature is complete (decision 11).
+- [x] GitHub: `dotnepal/ghostty-source` (public, empty, not a GitHub fork) already existed as `origin`; `colorful-tabs` pushed 2026-10-23. `main` was not pushed.
 
 ### Wave 1: foundations
 - [x] **Zig config:** 6 keys in `Config.zig`, palette type in `tab_color.zig`, C structs in `ghostty.h`, `c_get.zig` test (`9506f46`, `cd9efc3`).
@@ -98,7 +98,7 @@ light/dark appearance is honoured.
   - [x] dims unset inactive colors by 0.65, forces 4.5:1 foreground contrast under Increase Contrast, forces opacity 1.0 under Reduce Transparency, clamps opacity to [0.01, 1], and resolves dynamic colors against the window's `effectiveAppearance`.
   - [x] resolves per tab: `TerminalWindow.tabColorStyle` uses that window's `tabColor`, and `paintTabs()` resolves for each window in the group. `DerivedConfig` now carries the raw tab keys.
 - [x] Review all three against the contract (done 2026-10-23). Fixed in `tab_color.zig`: out-of-bounds write in `syncValueC`, `bg`/`fg` now required, names must be alphanumeric, duplicate names overwrite in place; Zig tests never compiled before and now pass (parse, invalid input, C view, clone, equal, `c_get`). Config docs no longer mention unsupported `cell-background`/`cell-foreground`, and the opacity doc says it is shared. Opacity is clamped in the Swift resolver, not in Zig.
-- [ ] Push. Committed; branch has no upstream. Deferred to the end (decision 11).
+- [x] Push (2026-10-23, `origin/colorful-tabs`).
 
 ### Wave 2: tab rendering
 - [x] **Painting:** done, unverified on screen (commit after `455da08`). `paintTabs()` resolves and paints each tab separately and:
@@ -112,15 +112,15 @@ light/dark appearance is honoured.
 - [x] **Palettes and fallback:** right-click swatches show the matching `tab-color-palette` entry's background (matched by name). Saved/restored and undo colors need no change: they store the enum and assign `tabColor`, which repaints. A tab that can't be painted shows the dot in its active background.
   - Limitation: palette entries whose names don't match one of the nine built-in color names have no swatch (storage still holds the enum; see the matching decision in `TabColorStyle.resolve`).
 - [x] Review, resolve overlaps in `TerminalWindow.swift`, check every must-have against the code. (Build and SwiftLint are clean; behavior is unchecked until Wave 3.)
-- [x] Commit. [ ] Push (deferred, decision 11).
+- [x] Commit. [x] Push.
 
 ### Wave 3: verify on Sam's Mac
 - [x] Sequoia, `native` style (Sam, 2026-10-23): config-only colors, picked colors, title colors, light/dark switching, Reduce Transparency, Increase Contrast, config reload, right-click swatches, and saved/restored and undone tab colors all work.
 - [x] Sequoia, remaining styles `tabs`, `transparent`, `hidden` (Sam, 2026-10-23: "works fine"; recorded as all three, `hidden` was expected to fall back to the dot).
 - Scope: tab-bar-only coloring is fine (Sam, 2026-10-23); a one-tab window has no tab bar on macOS, so nothing is colored there.
-- [ ] Tahoe: confirm the app builds with Swift 6.2+ (Xcode 26); test on a macOS 26 machine or VM when one is available.
+- [ ] Tahoe: skipped by Sam (2026-10-23). Builds against the macOS 26 SDK; never run on macOS 26. Revisit when a machine is available.
 - [ ] Fix whatever is reported, one round per batch of feedback.
-- [ ] Final commit and push.
+- [x] Final commit and push (2026-10-23).
 
 ### Later (not in scope yet)
 - [ ] Swift unit tests for the resolver (decision 8).

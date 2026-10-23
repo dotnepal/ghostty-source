@@ -3713,60 +3713,58 @@ keybind: Keybinds = .{},
 tab_color_palette: RepeatableTabColorPalette = .{},
 
 /// The active tab background color. Applied when this tab is the focused tab
-/// in its window. Only takes effect when `tab-color-palette` is not set or
-/// when the active tab color is not available.
+/// in its window. A tab color picked from the right-click menu takes
+/// precedence when a `tab-color-palette` entry has the same name.
+///
+/// If none of the `tab-*` color keys are set, tabs look the same as before.
 ///
 /// Valid values:
 ///
 ///   - Hex (`#RRGGBB` or `RRGGBB`)
 ///   - Named X11 color
-///   - "cell-background" to match the cell background color
+///
+/// macOS only.
 ///
 /// Available since: 1.5.0
 tab_background_active: ?Color = null,
 
 /// The active tab foreground color (text color). Applied when this tab is
-/// the focused tab in its window.
+/// the focused tab in its window. Accepts the same values as
+/// `tab-background-active`.
 ///
-/// Valid values:
-///
-///   - Hex (`#RRGGBB` or `RRGGBB`)
-///   - Named X11 color
-///   - "cell-foreground" to match the cell foreground color
+/// macOS only.
 ///
 /// Available since: 1.5.0
 tab_foreground_active: ?Color = null,
 
 /// The inactive tab background color. Applied to tabs that are not the
-/// focused tab in their window.
+/// focused tab in their window. Accepts the same values as
+/// `tab-background-active`.
 ///
-/// Valid values:
+/// If unset, it is `tab-background-active` dimmed to 65%.
 ///
-///   - Hex (`#RRGGBB` or `RRGGBB`)
-///   - Named X11 color
-///   - "cell-background" to match the cell background color
+/// macOS only.
 ///
 /// Available since: 1.5.0
 tab_background_inactive: ?Color = null,
 
 /// The inactive tab foreground color (text color). Applied to tabs that
-/// are not the focused tab in their window.
+/// are not the focused tab in their window. Accepts the same values as
+/// `tab-background-active`.
 ///
-/// Valid values:
+/// If unset, it is `tab-foreground-active` dimmed to 65%.
 ///
-///   - Hex (`#RRGGBB` or `RRGGBB`)
-///   - Named X11 color
-///   - "cell-foreground" to match the cell foreground color
+/// macOS only.
 ///
 /// Available since: 1.5.0
 tab_foreground_inactive: ?Color = null,
 
-/// The opacity of the inactive tab background. A value of `1.0` means
-/// fully opaque (no dimming), while `0.0` means fully transparent.
-/// The value is clamped to the range `[0.01, 1.0]`.
+/// The opacity of tab backgrounds, shared by active and inactive tabs. A
+/// value of `1.0` is fully opaque. The value is clamped to the range
+/// `[0.01, 1.0]`. It is forced to `1.0` when the macOS Reduce Transparency
+/// accessibility setting is on.
 ///
-/// This is applied on top of `tab-background-inactive` to create
-/// a dimmed appearance for inactive tabs.
+/// macOS only.
 ///
 /// Available since: 1.5.0
 tab_background_opacity: f64 = 1.0,

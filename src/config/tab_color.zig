@@ -54,6 +54,7 @@ pub const TabColorPalette = struct {
         };
         const name = input[0..colon_idx];
         if (name.len == 0) return error.InvalidFormat;
+        for (name) |c| if (!std.ascii.isAlphanumeric(c)) return error.InvalidFormat;
 
         // Allocate the name
         palette.name = try alloc.dupe(u8, name);
@@ -64,6 +65,9 @@ pub const TabColorPalette = struct {
 
         const kv_string = input[colon_idx + 1 ..];
         try parseKeyValuePairs(&palette, kv_string);
+
+        // bg and fg are required.
+        if (palette.bg == null or palette.fg == null) return error.InvalidFormat;
 
         return palette;
     }
@@ -177,17 +181,16 @@ pub const RepeatableTabColorPalette = struct {
 
         const item = try TabColorPalette.parse(alloc, input.?);
 
-        // Check for duplicate name; if found, remove the old entry
-        for (self.value.items, 0..) |*existing, i| {
+        // A duplicate name replaces the earlier entry in place, keeping its position.
+        for (self.value.items) |*existing| {
             if (std.mem.eql(u8, existing.name, item.name)) {
                 existing.deinit(alloc);
-                _ = self.value.swapRemove(i);
+                existing.* = item;
                 break;
             }
-        }
+        } else try self.value.append(alloc, item);
 
-        try self.value.append(alloc, item);
-        self.syncValueC(alloc) catch {};
+        try self.syncValueC(alloc);
     }
 
     /// Deep copy of the struct. Required by Config.
@@ -215,7 +218,7 @@ pub const RepeatableTabColorPalette = struct {
         var result: RepeatableTabColorPalette = .{
             .value = value,
         };
-        result.syncValueC(alloc) catch {};
+        try result.syncValueC(alloc);
         return result;
     }
 
@@ -263,7 +266,7 @@ pub const RepeatableTabColorPalette = struct {
                 alloc.free(self.value_c.palettes[0..self.value_c.capacity]);
             }
             self.value_c.palettes = @ptrCast((try alloc.alloc(TabColorPaletteC, len)).ptr);
-            self.value_c.count = len;
+            self.value_c.count = 0;
             self.value_c.capacity = len;
             for (self.value.items) |zig| {
                 self.value_c.palettes[self.value_c.count] = .{
@@ -347,7 +350,9 @@ pub const RepeatableTabColorPalette = struct {
 
     test "RepeatableTabColorPalette parseCLI" {
         const testing = std.testing;
-        const alloc = testing.allocator;
+        var arena = std.heap.ArenaAllocator.init(testing.allocator);
+        defer arena.deinit();
+        const alloc = arena.allocator();
 
         var list: RepeatableTabColorPalette = .{};
 
@@ -355,8 +360,8 @@ pub const RepeatableTabColorPalette = struct {
         try list.parseCLI(alloc, "nord:bg=#2e3440,fg=#d8dee9");
         try testing.expectEqual(@as(usize, 1), list.value.items.len);
         try testing.expectEqualStrings("nord", list.value.items[0].name);
-        try testing.expect(list.value.items[0].bg != null);
-        try testing.expect(list.value.items[0].fg != null);
+        try testing.expectEqual([3]u8{ 0x2e, 0x34, 0x40 }, list.value.items[0].bg.?);
+        try testing.expectEqual([3]u8{ 0xd8, 0xde, 0xe9 }, list.value.items[0].fg.?);
         try testing.expect(list.value.items[0].inactive_bg == null);
         try testing.expect(list.value.items[0].inactive_fg == null);
 
@@ -366,42 +371,98 @@ pub const RepeatableTabColorPalette = struct {
         try testing.expect(list.value.items[1].inactive_bg != null);
         try testing.expect(list.value.items[1].inactive_fg != null);
 
-        // Duplicate name overwrites
+        // Duplicate name overwrites in place
         try list.parseCLI(alloc, "nord:bg=#1a1b26,fg=#a9b1d6");
         try testing.expectEqual(@as(usize, 2), list.value.items.len);
-        try testing.expectEqualStrings("nord", list.value.items[1].name);
+        try testing.expectEqualStrings("nord", list.value.items[0].name);
+        try testing.expectEqual([3]u8{ 0x1a, 0x1b, 0x26 }, list.value.items[0].bg.?);
 
         // Empty clears
         try list.parseCLI(alloc, "");
         try testing.expectEqual(@as(usize, 0), list.value.items.len);
+        try testing.expectEqual(@as(usize, 0), list.cval().len);
+    }
+
+    test "RepeatableTabColorPalette parseCLI invalid" {
+        const testing = std.testing;
+        var arena = std.heap.ArenaAllocator.init(testing.allocator);
+        defer arena.deinit();
+        const alloc = arena.allocator();
+
+        var list: RepeatableTabColorPalette = .{};
+        try testing.expectError(error.InvalidFormat, list.parseCLI(alloc, "bg=#aabbcc,fg=#ddeeff"));
+        try testing.expectError(error.InvalidFormat, list.parseCLI(alloc, ":bg=#aabbcc,fg=#ddeeff"));
+        try testing.expectError(error.InvalidFormat, list.parseCLI(alloc, "my tab:bg=#aabbcc,fg=#ddeeff"));
+        try testing.expectError(error.InvalidFormat, list.parseCLI(alloc, "a:bg=#aabbcc"));
+        try testing.expectError(error.InvalidFormat, list.parseCLI(alloc, "a:fg=#aabbcc"));
+        try testing.expectError(error.InvalidColor, list.parseCLI(alloc, "a:bg=#abc,fg=#ddeeff"));
+        try testing.expectError(error.InvalidColor, list.parseCLI(alloc, "a:bg=#gggggg,fg=#ddeeff"));
+        try testing.expectEqual(@as(usize, 0), list.value.items.len);
+
+        // Unknown keys are ignored
+        try list.parseCLI(alloc, "a:bg=aabbcc,fg=ddeeff,shadow=#000000");
+        try testing.expectEqual(@as(usize, 1), list.value.items.len);
+    }
+
+    test "RepeatableTabColorPalette cval" {
+        const testing = std.testing;
+        var arena = std.heap.ArenaAllocator.init(testing.allocator);
+        defer arena.deinit();
+        const alloc = arena.allocator();
+
+        var list: RepeatableTabColorPalette = .{};
+        try list.parseCLI(alloc, "a:bg=#010203,fg=#040506");
+        try list.parseCLI(alloc, "b:bg=#0a0b0c,fg=#0d0e0f,inactive-bg=#101112");
+        try list.parseCLI(alloc, "c:bg=#202122,fg=#232425,inactive-fg=#262728");
+
+        const c = list.cval();
+        try testing.expectEqual(@as(usize, 3), c.len);
+        try testing.expectEqualStrings("a", c.palettes[0].name[0..c.palettes[0].name_len]);
+        try testing.expectEqual([3]u8{ 1, 2, 3 }, c.palettes[0].bg);
+        try testing.expectEqual(@as(u8, 0), c.palettes[0].has_inactive_bg);
+        try testing.expectEqualStrings("b", c.palettes[1].name[0..c.palettes[1].name_len]);
+        try testing.expectEqual(@as(u8, 1), c.palettes[1].has_inactive_bg);
+        try testing.expectEqual([3]u8{ 0x10, 0x11, 0x12 }, c.palettes[1].inactive_bg);
+        try testing.expectEqualStrings("c", c.palettes[2].name[0..c.palettes[2].name_len]);
+        try testing.expectEqual(@as(u8, 1), c.palettes[2].has_inactive_fg);
+
+        // Overwriting keeps the length and updates the C data in place.
+        try list.parseCLI(alloc, "b:bg=#ffffff,fg=#000000");
+        const c2 = list.cval();
+        try testing.expectEqual(@as(usize, 3), c2.len);
+        try testing.expectEqual([3]u8{ 0xff, 0xff, 0xff }, c2.palettes[1].bg);
+        try testing.expectEqual(@as(u8, 0), c2.palettes[1].has_inactive_bg);
     }
 
     test "RepeatableTabColorPalette clone" {
         const testing = std.testing;
-        const alloc = testing.allocator;
+        var arena = std.heap.ArenaAllocator.init(testing.allocator);
+        defer arena.deinit();
+        const alloc = arena.allocator();
 
         var list: RepeatableTabColorPalette = .{};
         try list.parseCLI(alloc, "test:bg=#aabbcc,fg=#ddeeff");
-        try list.parseCLI(alloc, "test2:bg=#112233");
+        try list.parseCLI(alloc, "test2:bg=#112233,fg=#445566");
 
         const cloned = try list.clone(alloc);
-        try testing.expectEqual(list.value.items.len, cloned.value.items.len);
-        try testing.expect(std.mem.eql(u8, list.value.items[0].name, cloned.value.items[0].name));
-        try testing.expect(list.value.items[0].bg.? != cloned.value.items[0].bg.?);
-        try testing.expect(std.mem.eql(u8, &list.value.items[0].bg.?, &cloned.value.items[0].bg.?));
+        try testing.expect(list.equal(cloned));
+        try testing.expect(list.value.items[0].name.ptr != cloned.value.items[0].name.ptr);
+        try testing.expectEqual(@as(usize, 2), cloned.cval().len);
     }
 
     test "RepeatableTabColorPalette equal" {
         const testing = std.testing;
-        const alloc = testing.allocator;
+        var arena = std.heap.ArenaAllocator.init(testing.allocator);
+        defer arena.deinit();
+        const alloc = arena.allocator();
 
         var a: RepeatableTabColorPalette = .{};
         var b: RepeatableTabColorPalette = .{};
-        try a.parseCLI(alloc, "test:bg=#aabbcc");
-        try b.parseCLI(alloc, "test:bg=#aabbcc");
+        try a.parseCLI(alloc, "test:bg=#aabbcc,fg=#ddeeff");
+        try b.parseCLI(alloc, "test:bg=#aabbcc,fg=#ddeeff");
         try testing.expect(a.equal(b));
 
-        try b.parseCLI(alloc, "test2:bg=#ddeeff");
+        try b.parseCLI(alloc, "test2:bg=#ddeeff,fg=#aabbcc");
         try testing.expect(!a.equal(b));
     }
 };

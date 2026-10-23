@@ -739,7 +739,7 @@ extension Ghostty {
             }
         }
 
-        /// Active tab background color from config (hex or "cell-background").
+        /// Active tab background color from config (hex or named X11 color).
         var tabBackgroundActive: NSColor? {
             guard let config = self.config else { return nil }
             var v: ghostty_config_color_s = .init()
@@ -748,7 +748,7 @@ extension Ghostty {
             return NSColor(ghostty: v)
         }
 
-        /// Active tab foreground color from config (hex or "cell-foreground").
+        /// Active tab foreground color from config (hex or named X11 color).
         var tabForegroundActive: NSColor? {
             guard let config = self.config else { return nil }
             var v: ghostty_config_color_s = .init()
@@ -757,7 +757,7 @@ extension Ghostty {
             return NSColor(ghostty: v)
         }
 
-        /// Inactive tab background color from config (hex or "cell-background").
+        /// Inactive tab background color from config (hex or named X11 color).
         var tabBackgroundInactive: NSColor? {
             guard let config = self.config else { return nil }
             var v: ghostty_config_color_s = .init()
@@ -766,7 +766,7 @@ extension Ghostty {
             return NSColor(ghostty: v)
         }
 
-        /// Inactive tab foreground color from config (hex or "cell-foreground").
+        /// Inactive tab foreground color from config (hex or named X11 color).
         var tabForegroundInactive: NSColor? {
             guard let config = self.config else { return nil }
             var v: ghostty_config_color_s = .init()
@@ -775,8 +775,8 @@ extension Ghostty {
             return NSColor(ghostty: v)
         }
 
-        /// Inactive tab background opacity factor (0 = fully transparent, 1 = fully opaque).
-        /// Clamped to [0.01, 1.0].
+        /// Tab background opacity shared by active and inactive tabs (1 = fully opaque).
+        /// The raw config value; `TabColorStyle.resolve` clamps it to [0.01, 1.0].
         var tabBackgroundOpacity: Double {
             guard let config = self.config else { return 1.0 }
             var v: Double = 1.0

@@ -3768,6 +3768,10 @@ keybind: Keybinds = .{},
 /// the focused tab in its window. Accepts the same values as
 /// `tab-background-active`.
 ///
+/// A tab with a color picked from the right-click menu uses the `fg` of the
+/// `tab-color-palette` entry with the same name instead of this key, when
+/// there is such an entry.
+///
 /// macOS only.
 ///
 /// Available since: 1.5.0

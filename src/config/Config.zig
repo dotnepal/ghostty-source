@@ -3710,7 +3710,7 @@ keybind: Keybinds = .{},
 ///   `tab-color-palette = dracula:bg=#282a36,fg=#f8f8f2,inactive-bg=#1e1f29,inactive-fg=#6272a4`
 ///
 /// Available since: 1.5.0
-tab_color_palette: RepeatableTabColorPalette = .{},
+@"tab-color-palette": RepeatableTabColorPalette = .{},
 
 /// The active tab background color. Applied when this tab is the focused tab
 /// in its window. A tab color picked from the right-click menu takes
@@ -3726,7 +3726,7 @@ tab_color_palette: RepeatableTabColorPalette = .{},
 /// macOS only.
 ///
 /// Available since: 1.5.0
-tab_background_active: ?Color = null,
+@"tab-background-active": ?Color = null,
 
 /// The active tab foreground color (text color). Applied when this tab is
 /// the focused tab in its window. Accepts the same values as
@@ -3735,7 +3735,7 @@ tab_background_active: ?Color = null,
 /// macOS only.
 ///
 /// Available since: 1.5.0
-tab_foreground_active: ?Color = null,
+@"tab-foreground-active": ?Color = null,
 
 /// The inactive tab background color. Applied to tabs that are not the
 /// focused tab in their window. Accepts the same values as
@@ -3746,7 +3746,7 @@ tab_foreground_active: ?Color = null,
 /// macOS only.
 ///
 /// Available since: 1.5.0
-tab_background_inactive: ?Color = null,
+@"tab-background-inactive": ?Color = null,
 
 /// The inactive tab foreground color (text color). Applied to tabs that
 /// are not the focused tab in their window. Accepts the same values as
@@ -3757,7 +3757,7 @@ tab_background_inactive: ?Color = null,
 /// macOS only.
 ///
 /// Available since: 1.5.0
-tab_foreground_inactive: ?Color = null,
+@"tab-foreground-inactive": ?Color = null,
 
 /// The opacity of tab backgrounds, shared by active and inactive tabs. A
 /// value of `1.0` is fully opaque. The value is clamped to the range
@@ -3767,7 +3767,7 @@ tab_foreground_inactive: ?Color = null,
 /// macOS only.
 ///
 /// Available since: 1.5.0
-tab_background_opacity: f64 = 1.0,
+@"tab-background-opacity": f64 = 1.0,
 
 /// Put every surface (tab, split, window) into a transient `systemd` scope.
 ///
@@ -4227,6 +4227,32 @@ fn loadReader(self: *Config, alloc: Allocator, reader: *std.Io.Reader, path: []c
     var iter: cli.args.LineIterator = .{ .r = reader, .filepath = path };
     try self.loadIter(alloc, &iter);
     try self.expandPaths(std.fs.path.dirname(path).?);
+}
+
+test "tab color keys load from config files" {
+    const testing = std.testing;
+    const alloc = testing.allocator;
+
+    const data =
+        \\tab-background-active = #3b4252
+        \\tab-foreground-active = #eceff4
+        \\tab-background-inactive = #2e3440
+        \\tab-foreground-inactive = #81a1c1
+        \\tab-background-opacity = 0.5
+        \\tab-color-palette = blue:bg=#5e81ac,fg=#ffffff
+        \\
+    ;
+    var reader: std.Io.Reader = .fixed(data);
+    var cfg = try Config.default(alloc);
+    defer cfg.deinit();
+    try cfg.loadReader(alloc, &reader, "/home/ghostty/.config/ghostty/config.ghostty");
+    try cfg.finalize();
+
+    try testing.expect(cfg._diagnostics.empty());
+    try testing.expectEqual(Color{ .r = 0x3b, .g = 0x42, .b = 0x52 }, cfg.@"tab-background-active".?);
+    try testing.expectEqual(Color{ .r = 0x81, .g = 0xa1, .b = 0xc1 }, cfg.@"tab-foreground-inactive".?);
+    try testing.expectEqual(@as(f64, 0.5), cfg.@"tab-background-opacity");
+    try testing.expectEqual(@as(usize, 1), cfg.@"tab-color-palette".value.items.len);
 }
 
 test "handle bom in config files" {

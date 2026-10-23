@@ -78,7 +78,8 @@ light/dark appearance is honoured.
 
 - Zig 0.16.0 via `brew link zig@0.16` (`/opt/homebrew/opt/zig@0.16/bin/zig`).
 - SwiftLint, nushell and the Metal Toolchain (`xcodebuild -downloadComponent MetalToolchain`) installed.
-- Build core: `zig build`. Build app: `nu macos/build.nu` → `macos/build/Debug/Ghostty.app`.
+- Build core: `zig build`. Build app: `nu macos/build.nu` → `macos/build/Debug/Ghostty.app`. `nu macos/build.nu` does not rebuild the Zig core: run `zig build` first after any `src/` change, or the app links a stale `macos/GhosttyKit.xcframework`. If codesign fails on `default.profraw`, delete `macos/build/Debug/Ghostty.app/Contents/MacOS/default.profraw`.
+- Run with a throwaway config: `macos/build/Debug/Ghostty.app/Contents/MacOS/ghostty --config-file=$HOME/ghostty-tabs-test.conf`; check it first with `... +validate-config --config-file=...`.
 
 ## Checklist
 
@@ -131,6 +132,8 @@ light/dark appearance is honoured.
 - Native tabs and titlebar tabs paint through different code paths, so each needs its own work.
 
 ## Notes
+
+- Found 2026-10-23 while testing: the Wave 1 config fields were declared as `tab_background_active` etc., so the parser reported `unknown field` for every `tab-*` key. Renamed to kebab-case (`@"tab-background-active"`), with a config-file load test. The Wave 1 tests missed it because they used the same wrong names.
 
 - Commit `9506f46`'s message lists six files, but it only adds `tab_color.zig`; the rest landed in `cd9efc3`.
 

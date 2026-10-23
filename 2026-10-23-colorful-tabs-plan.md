@@ -133,6 +133,8 @@ light/dark appearance is honoured.
 
 ## Notes
 
+- Found 2026-10-23 while testing: painting `_backgroundView`'s layer color did not stick, because AppKit resets it within half a second of redrawing the tab (logged with a temporary dump). Tabs are now painted on our own overlay view (`TabColorOverlayView`, identifier `com.mitchellh.ghostty.tabColorOverlay`) inside `_backgroundView`, which survived 3 s in the log with the right colors; titles get the configured colors. `NSTabButtonBackground` doesn't exist on Sequoia, so it is no longer looked for. Still to check by eye: that the overlay looks right next to the tab borders, and the `tabs`/`transparent`/`hidden` styles.
+
 - Found 2026-10-23 while testing: with no `tab-color-palette` set, `RepeatableTabColorPalette.cval()` cast a null pointer to a non-null one and the app panicked on launch. `TabColorPaletteListC.palettes` is now optional (null when empty), and tests cover the empty list through `c_get`. The earlier `c_get` test reinterpreted the config field as the C struct and could not have caught this.
 
 - Found 2026-10-23 while testing: the Wave 1 config fields were declared as `tab_background_active` etc., so the parser reported `unknown field` for every `tab-*` key. Renamed to kebab-case (`@"tab-background-active"`), with a config-file load test. The Wave 1 tests missed it because they used the same wrong names.

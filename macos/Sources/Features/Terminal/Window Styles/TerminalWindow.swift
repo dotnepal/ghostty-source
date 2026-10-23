@@ -412,28 +412,40 @@ class TerminalWindow: NSWindow {
         }
 
         // Walk up from our accessory view to this window's own tab button.
-        guard let button = tab.accessoryView?.firstSuperview(withClassName: "NSTabButton") else {
+        guard let button = tab.accessoryView?.firstSuperview(withClassName: "NSTabButton"),
+              let backgroundView = button.firstDescendant(withID: "_backgroundView")
+        else {
             tabPaintFailed = hasStyle
             return
         }
-        let views = [
-            button.firstDescendant(withID: "_backgroundView"),
-            button.firstDescendant(withClassName: "NSTabButtonBackground"),
-        ].compactMap { $0 }
 
-        let color: NSColor? = hasStyle
-            ? (isActive ? (style.activeBackground ?? style.inactiveBackground) : style.inactiveBackground)?
-                .withAlphaComponent(style.backgroundOpacity)
-            : nil
-        for view in views {
-            view.wantsLayer = true
-            view.layer?.backgroundColor = color?.cgColor
+        // AppKit resets the layer color of its own views whenever it redraws the tab,
+        // so we paint on an overlay view of our own inside the tab's background view.
+        let overlay = backgroundView.subviews.first { $0.identifier == Self.tabColorOverlayIdentifier }
+        guard hasStyle,
+              let color = (isActive ? (style.activeBackground ?? style.inactiveBackground) : style.inactiveBackground)
+        else {
+            overlay?.removeFromSuperview()
+            tabIsPainted = false
+            tabPaintFailed = false
+            return
         }
-        button.needsDisplay = true
 
-        tabPaintFailed = hasStyle && views.isEmpty
-        tabIsPainted = hasStyle && !views.isEmpty
+        let view = overlay ?? {
+            let view = TabColorOverlayView(frame: backgroundView.bounds)
+            view.identifier = Self.tabColorOverlayIdentifier
+            view.autoresizingMask = [.width, .height]
+            view.wantsLayer = true
+            backgroundView.addSubview(view)
+            return view
+        }()
+        view.layer?.backgroundColor = color.withAlphaComponent(style.backgroundOpacity).cgColor
+
+        tabIsPainted = true
+        tabPaintFailed = false
     }
+
+    private static let tabColorOverlayIdentifier = NSUserInterfaceItemIdentifier("com.mitchellh.ghostty.tabColorOverlay")
 
     private func updateTabColorIndicator() {
         tabColorIndicator.rootView = TabColorIndicatorView(tabColor: resolvedTabColor)
@@ -1051,4 +1063,10 @@ extension TerminalWindow: TabTitleEditorDelegate {
         else { return }
         makeFirstResponder(focusedSurface)
     }
+}
+
+/// The view we paint a tab's color on. It never takes mouse events, so the tab button
+/// underneath keeps handling clicks, dragging and its context menu.
+private final class TabColorOverlayView: NSView {
+    override func hitTest(_ point: NSPoint) -> NSView? { nil }
 }

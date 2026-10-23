@@ -1118,7 +1118,9 @@ class TerminalController: BaseTerminalController, TabGroupCloseCoordinator.Contr
         }
 
         // Initialize our content view to the SwiftUI root
-        let container = TerminalViewContainer {
+        let container = TerminalViewContainer(
+            showsTabStrip: config.macosTabsLocation == .bottom
+        ) {
             TerminalView(ghostty: ghostty, viewModel: self, delegate: self)
         }
 

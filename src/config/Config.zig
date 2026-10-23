@@ -3692,8 +3692,9 @@ keybind: Keybinds = .{},
 
 /// The tab color palette for the right-click color picker on macOS.
 ///
-/// Each palette entry is a named color with optional active and inactive
-/// background/foreground colors. The format is:
+/// Each palette entry is a named color with an active background and
+/// foreground color (`bg` and `fg`, both required) and optional inactive
+/// background and foreground colors. The format is:
 ///
 ///   `name:bg=#RRGGBB,fg=#RRGGBB,inactive-bg=#RRGGBB,inactive-fg=#RRGGBB`
 ///

@@ -32,10 +32,29 @@ class TerminalWindow: NSWindow {
         return view
     }()
 
-    /// Resolved display color for the tab color indicator.
-    /// Uses the active tab color from tabColorStyle if available.
+    /// Resolved display color for the tab color indicator: the picked color,
+    /// through its matching palette entry. Nil when no color is picked.
     private var resolvedTabColor: NSColor? {
-        derivedConfig.tabColorStyle.activeBackground
+        guard tabColor != .none else { return nil }
+        return tabColorStyle.activeBackground
+    }
+
+    /// The tab color style for this window's tab, resolved from the config, the
+    /// picked tab color, the current appearance and accessibility settings.
+    var tabColorStyle: TabColorStyle {
+        let workspace = NSWorkspace.shared
+        return TabColorStyle.resolve(
+            palette: derivedConfig.tabColorPalette,
+            pickedColor: tabColor,
+            bgActive: derivedConfig.tabBackgroundActive,
+            fgActive: derivedConfig.tabForegroundActive,
+            bgInactive: derivedConfig.tabBackgroundInactive,
+            fgInactive: derivedConfig.tabForegroundInactive,
+            bgOpacity: derivedConfig.tabBackgroundOpacity,
+            appearance: effectiveAppearance,
+            reduceTransparency: workspace.accessibilityDisplayShouldReduceTransparency,
+            increaseContrast: workspace.accessibilityDisplayShouldIncreaseContrast
+        )
     }
 
     /// The configuration derived from the Ghostty config so we don't need to rely on references.
@@ -70,7 +89,7 @@ class TerminalWindow: NSWindow {
     var tabColor: TerminalTabColor = .none {
         didSet {
             guard tabColor != oldValue else { return }
-        tabColorIndicator.rootView = TabColorIndicatorView(tabColor: resolvedTabColor ?? tabColor.displayColor)
+            tabColorIndicator.rootView = TabColorIndicatorView(tabColor: resolvedTabColor)
             invalidateRestorableState()
 
             // Paint tabs when the color changes
@@ -345,7 +364,6 @@ class TerminalWindow: NSWindow {
     /// Paints all visible tabs with the resolved tab color style.
     /// Called whenever the active tab changes, appearance changes, or config is reloaded.
     func paintTabs() {
-        let style = derivedConfig.tabColorStyle
         guard let tabGroup = tabGroup, tabGroup.isTabBarVisible else { return }
 
         // Find the NSTabBar in our tab bar accessory view
@@ -359,6 +377,8 @@ class TerminalWindow: NSWindow {
                   let button = accessoryView.superview?.superview?.firstDescendant(withClassName: "NSTabButton")
             else { continue }
 
+            // Each tab has its own picked color, so resolve the style per tab.
+            let style = (window as? TerminalWindow)?.tabColorStyle ?? .default
             let isActive = (window === tabGroup.selectedWindow)
             let color: NSColor? = isActive
                 ? (style.activeBackground ?? style.inactiveBackground)
@@ -710,7 +730,10 @@ class TerminalWindow: NSWindow {
         let windowCornerRadius: CGFloat
         let tabColorPalette: [Ghostty.Config.TabColorPaletteEntry]
         let tabBackgroundOpacity: Double
-        let tabColorStyle: TabColorStyle
+        let tabBackgroundActive: NSColor?
+        let tabForegroundActive: NSColor?
+        let tabBackgroundInactive: NSColor?
+        let tabForegroundInactive: NSColor?
 
         init() {
             self.title = nil
@@ -722,7 +745,10 @@ class TerminalWindow: NSWindow {
             self.windowCornerRadius = 16
             self.tabColorPalette = []
             self.tabBackgroundOpacity = 1.0
-            self.tabColorStyle = .default
+            self.tabBackgroundActive = nil
+            self.tabForegroundActive = nil
+            self.tabBackgroundInactive = nil
+            self.tabForegroundInactive = nil
         }
 
         init(_ config: Ghostty.Config) {
@@ -745,15 +771,10 @@ class TerminalWindow: NSWindow {
 
             self.tabColorPalette = config.tabColorPalette
             self.tabBackgroundOpacity = config.tabBackgroundOpacity
-            self.tabColorStyle = TabColorStyle.resolve(
-                palette: config.tabColorPalette,
-                pickedColor: .none,
-                bgActive: config.tabBackgroundActive,
-                fgActive: config.tabForegroundActive,
-                bgInactive: config.tabBackgroundInactive,
-                fgInactive: config.tabForegroundInactive,
-                bgOpacity: config.tabBackgroundOpacity
-            )
+            self.tabBackgroundActive = config.tabBackgroundActive
+            self.tabForegroundActive = config.tabForegroundActive
+            self.tabBackgroundInactive = config.tabBackgroundInactive
+            self.tabForegroundInactive = config.tabForegroundInactive
         }
     }
 }

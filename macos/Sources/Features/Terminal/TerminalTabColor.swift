@@ -184,16 +184,20 @@ private struct TabColorSwatch: View {
     }
 }
 
-// MARK: - Colored Tabs (Wave 1)
+// MARK: - Colored Tabs
 
-/// Resolved tab color style derived from the Ghostty config.
-/// Used to paint tab backgrounds and foregrounds.
+/// Resolved tab color style derived from the Ghostty config and a tab's picked color.
+/// Used to paint tab backgrounds and foregrounds. All colors are concrete sRGB colors
+/// resolved against a specific appearance, so they don't change if the appearance does;
+/// re-resolve when it changes.
 struct TabColorStyle {
     let activeBackground: NSColor?
     let activeForeground: NSColor?
     let inactiveBackground: NSColor?
     let inactiveForeground: NSColor?
-    let inactiveOpacity: Double
+
+    /// Opacity applied to both active and inactive backgrounds.
+    let backgroundOpacity: Double
 
     /// The default style — no tab coloring applied (Ghostty default behavior).
     static let `default` = TabColorStyle(
@@ -201,16 +205,28 @@ struct TabColorStyle {
         activeForeground: nil,
         inactiveBackground: nil,
         inactiveForeground: nil,
-        inactiveOpacity: 1.0
+        backgroundOpacity: 1.0
     )
 
-    /// Resolve tab color style from config values.
+    /// The factor applied to active colors to derive unset inactive colors.
+    static let inactiveDimFactor: CGFloat = 0.65
+
+    /// The minimum foreground/background contrast ratio when Increase Contrast is on.
+    static let minimumContrastRatio: Double = 4.5
+
+    // swiftlint:disable function_parameter_count
+    /// Resolve the tab color style for a single tab.
     ///
     /// Resolution order:
-    /// 1. Picked palette entry color (from right-click picker, stored as TerminalTabColor)
+    /// 1. Picked color (right-click picker), through the `tab-color-palette` entry whose
+    ///    name matches the color's name (case-insensitive). With no matching entry the
+    ///    built-in system color is used.
     /// 2. tab-*-active / tab-*-inactive config keys
     /// 3. Ghostty default (no coloring)
-    // swiftlint:disable:function_parameter_count
+    ///
+    /// Unset inactive colors are the active colors dimmed by `inactiveDimFactor`. Then
+    /// Reduce Transparency forces opacity to 1 and Increase Contrast forces each foreground
+    /// to meet `minimumContrastRatio` against its background.
     static func resolve(
         palette: [Ghostty.Config.TabColorPaletteEntry],
         pickedColor: TerminalTabColor,
@@ -218,31 +234,117 @@ struct TabColorStyle {
         fgActive: NSColor?,
         bgInactive: NSColor?,
         fgInactive: NSColor?,
-        bgOpacity: Double
+        bgOpacity: Double,
+        appearance: NSAppearance,
+        reduceTransparency: Bool,
+        increaseContrast: Bool
     ) -> TabColorStyle {
-        // If user has picked a specific color via right-click picker, use it
-        if pickedColor != .none, let displayColor = pickedColor.displayColor {
-            return TabColorStyle(
-                activeBackground: displayColor,
-                activeForeground: fgActive,
-                inactiveBackground: bgInactive,
-                inactiveForeground: fgInactive,
-                inactiveOpacity: bgOpacity
-            )
+        var activeBg: NSColor?
+        var activeFg: NSColor?
+        var inactiveBg: NSColor?
+        var inactiveFg: NSColor?
+
+        if pickedColor != .none {
+            // Later palette entries with the same name overwrite earlier ones.
+            let name = pickedColor.localizedName
+            if let entry = palette.last(where: { $0.name.caseInsensitiveCompare(name) == .orderedSame }) {
+                activeBg = entry.background
+                activeFg = entry.foreground
+                inactiveBg = entry.inactiveBackground
+                inactiveFg = entry.inactiveForeground
+            } else {
+                activeBg = pickedColor.displayColor
+                activeFg = fgActive
+                inactiveFg = fgInactive
+            }
+        } else {
+            activeBg = bgActive
+            activeFg = fgActive
+            inactiveBg = bgInactive
+            inactiveFg = fgInactive
         }
 
-        // If a palette is configured, use the first entry as the primary style
-        if let first = palette.first {
-            return TabColorStyle(
-                activeBackground: first.background,
-                activeForeground: first.foreground,
-                inactiveBackground: first.inactiveBackground ?? bgInactive,
-                inactiveForeground: first.inactiveForeground ?? fgInactive,
-                inactiveOpacity: bgOpacity
-            )
+        // Nothing configured: keep Ghostty's existing tab look.
+        if activeBg == nil, activeFg == nil, inactiveBg == nil, inactiveFg == nil {
+            return .default
         }
 
-        // No config — Ghostty default behavior
-        return .default
+        // System colors are dynamic, so pin everything to the tab's appearance
+        // before deriving anything from it.
+        activeBg = activeBg?.resolved(in: appearance)
+        activeFg = activeFg?.resolved(in: appearance)
+        inactiveBg = inactiveBg?.resolved(in: appearance) ?? activeBg?.dimmed(by: inactiveDimFactor)
+        inactiveFg = inactiveFg?.resolved(in: appearance) ?? activeFg?.dimmed(by: inactiveDimFactor)
+
+        if increaseContrast {
+            activeFg = contrastingForeground(activeFg, on: activeBg, appearance: appearance)
+            inactiveFg = contrastingForeground(inactiveFg, on: inactiveBg, appearance: appearance)
+        }
+
+        return TabColorStyle(
+            activeBackground: activeBg,
+            activeForeground: activeFg,
+            inactiveBackground: inactiveBg,
+            inactiveForeground: inactiveFg,
+            backgroundOpacity: reduceTransparency ? 1.0 : min(max(bgOpacity, 0.01), 1.0)
+        )
+    }
+    // swiftlint:enable function_parameter_count
+
+    /// Returns `fg` if it meets `minimumContrastRatio` against `bg`, otherwise black or
+    /// white, whichever contrasts more. A nil `fg` stands for the system label color.
+    /// With no `bg` there is nothing to contrast against, so `fg` is returned unchanged.
+    private static func contrastingForeground(
+        _ fg: NSColor?,
+        on bg: NSColor?,
+        appearance: NSAppearance
+    ) -> NSColor? {
+        guard let bg else { return fg }
+        let effectiveFg = fg ?? NSColor.labelColor.resolved(in: appearance)
+        if effectiveFg.contrastRatio(with: bg) >= minimumContrastRatio { return fg }
+        return NSColor.black.contrastRatio(with: bg) >= NSColor.white.contrastRatio(with: bg)
+            ? .black
+            : .white
+    }
+}
+
+private extension NSColor {
+    /// This color as a concrete sRGB color, resolving dynamic (system) colors in `appearance`.
+    func resolved(in appearance: NSAppearance) -> NSColor {
+        var result = self
+        appearance.performAsCurrentDrawingAppearance {
+            result = self.usingColorSpace(.sRGB) ?? self
+        }
+        return result
+    }
+
+    /// This color with its RGB components scaled by `factor`. Alpha is kept.
+    func dimmed(by factor: CGFloat) -> NSColor {
+        guard let rgb = usingColorSpace(.sRGB) else { return self }
+        return NSColor(
+            srgbRed: rgb.redComponent * factor,
+            green: rgb.greenComponent * factor,
+            blue: rgb.blueComponent * factor,
+            alpha: rgb.alphaComponent
+        )
+    }
+
+    /// WCAG 2 relative luminance.
+    var relativeLuminance: Double {
+        guard let rgb = usingColorSpace(.sRGB) else { return 0 }
+        func linear(_ c: CGFloat) -> Double {
+            let c = Double(c)
+            return c <= 0.03928 ? c / 12.92 : pow((c + 0.055) / 1.055, 2.4)
+        }
+        return 0.2126 * linear(rgb.redComponent)
+            + 0.7152 * linear(rgb.greenComponent)
+            + 0.0722 * linear(rgb.blueComponent)
+    }
+
+    /// WCAG 2 contrast ratio between this color and `other`, from 1 to 21.
+    func contrastRatio(with other: NSColor) -> Double {
+        let a = relativeLuminance
+        let b = other.relativeLuminance
+        return (max(a, b) + 0.05) / (min(a, b) + 0.05)
     }
 }

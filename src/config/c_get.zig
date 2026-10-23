@@ -2,9 +2,11 @@ const std = @import("std");
 
 const key = @import("key.zig");
 const Config = @import("Config.zig");
+const tab_color = @import("tab_color.zig");
 const Color = Config.Color;
 const Key = key.Key;
 const Value = key.Value;
+const RepeatableTabColorPalette = Config.RepeatableTabColorPalette;
 
 /// Get a value from the config by key into the given pointer. This is
 /// specifically for C-compatible APIs. If you're using Zig, just access
@@ -237,4 +239,50 @@ test "c_get: split-preserve-zoom" {
     c.@"split-preserve-zoom".navigation = true;
     try testing.expect(get(&c, .@"split-preserve-zoom", @ptrCast(&bits)));
     try testing.expectEqual(@as(c_uint, 1), bits);
+}
+
+test "c_get: tab_color_palette" {
+    const testing = std.testing;
+    const alloc = testing.allocator;
+
+    var c = try Config.default(alloc);
+    defer c.deinit();
+
+    // Empty palette should return an empty list, through the C getter too.
+    var list: tab_color.TabColorPaletteListC = undefined;
+    try testing.expect(get(&c, .@"tab-color-palette", @ptrCast(&list)));
+    try testing.expectEqual(@as(usize, 0), list.len);
+    try testing.expect(list.palettes == null);
+
+    // Parse a palette entry. Config values are owned by the config's arena.
+    var arena = std.heap.ArenaAllocator.init(alloc);
+    defer arena.deinit();
+    try c.@"tab-color-palette".parseCLI(arena.allocator(), "nord:bg=#2e3440,fg=#d8dee9");
+
+    try testing.expect(get(&c, .@"tab-color-palette", @ptrCast(&list)));
+    try testing.expectEqual(@as(usize, 1), list.len);
+    try testing.expectEqual(@as(u8, 0x2e), list.palettes.?[0].bg[0]);
+}
+
+test "c_get: tab colors" {
+    const testing = std.testing;
+    const alloc = testing.allocator;
+
+    var c = try Config.default(alloc);
+    defer c.deinit();
+
+    // Unset tab colors report no value.
+    var color: Config.Color.C = undefined;
+    try testing.expect(!get(&c, .@"tab-background-active", @ptrCast(&color)));
+    try testing.expect(!get(&c, .@"tab-foreground-inactive", @ptrCast(&color)));
+
+    var opacity: f64 = 0;
+    try testing.expect(get(&c, .@"tab-background-opacity", @ptrCast(&opacity)));
+    try testing.expectEqual(@as(f64, 1.0), opacity);
+
+    c.@"tab-background-active" = .{ .r = 1, .g = 2, .b = 3 };
+    try testing.expect(get(&c, .@"tab-background-active", @ptrCast(&color)));
+    try testing.expectEqual(@as(u8, 1), color.r);
+    try testing.expectEqual(@as(u8, 2), color.g);
+    try testing.expectEqual(@as(u8, 3), color.b);
 }

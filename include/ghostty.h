@@ -561,6 +561,23 @@ typedef struct {
   ghostty_config_color_s colors[256];
 } ghostty_config_palette_s;
 
+// config.RepeatableTabColorPalette (Colorful tabs feature)
+typedef struct {
+  const char* name;
+  uint32_t name_len;
+  uint8_t bg[3];
+  uint8_t fg[3];
+  uint8_t inactive_bg[3];
+  uint8_t inactive_fg[3];
+  uint8_t has_inactive_bg;
+  uint8_t has_inactive_fg;
+} ghostty_config_tab_color_palette_s;
+
+typedef struct {
+  const ghostty_config_tab_color_palette_s* palettes;
+  size_t len;
+} ghostty_config_tab_color_palette_list_s;
+
 // config.QuickTerminalSize
 typedef enum {
   GHOSTTY_QUICK_TERMINAL_SIZE_NONE,

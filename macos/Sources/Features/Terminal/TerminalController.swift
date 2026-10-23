@@ -663,6 +663,11 @@ class TerminalController: BaseTerminalController, TabGroupCloseCoordinator.Contr
             window.titlebarFont = nil
         }
 
+        // Update the window's derived config from the current Ghostty config
+        // before syncing appearance. This ensures tab colors and other
+        // derived values are up to date when paintTabs() runs.
+        window.updateDerivedConfig(from: ghostty.config)
+
         // Call this last in case it uses any of the properties above.
         window.syncAppearance(surfaceConfig)
         terminalViewContainer?.ghosttyConfigDidChange(ghostty.config, preferredBackgroundColor: window.preferredBackgroundColor)

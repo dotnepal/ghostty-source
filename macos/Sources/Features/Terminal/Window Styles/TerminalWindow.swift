@@ -272,10 +272,12 @@ class TerminalWindow: NSWindow {
         }
         viewModel.isMainWindow = true
 
-        // Spike: hide the native tab bar while keeping the tab group, to check that
-        // tabs stay grouped and selectable. `toggleTabBar` flips the state for the
-        // whole group, so only call it while the bar is visible.
-        if let tabGroup, tabGroup.isTabBarVisible {
+        // In bottom mode, hide the native tab bar while keeping the tab group so
+        // tabs stay grouped and selectable (the bottom strip replaces it).
+        // `toggleTabBar` flips the state for the whole group, so only call it
+        // while the bar is visible.
+        if derivedConfig.macosTabsLocation == .bottom,
+           let tabGroup, tabGroup.isTabBarVisible {
             toggleTabBar(nil)
         }
 
@@ -793,6 +795,7 @@ class TerminalWindow: NSWindow {
         let backgroundOpacity: Double
         let macosWindowButtons: Ghostty.MacOSWindowButtons
         let macosTitlebarStyle: Ghostty.Config.MacOSTitlebarStyle
+        let macosTabsLocation: Ghostty.Config.MacOSTabsLocation
         let windowCornerRadius: CGFloat
         let tabColorPalette: [Ghostty.Config.TabColorPaletteEntry]
         let tabBackgroundOpacity: Double
@@ -808,6 +811,7 @@ class TerminalWindow: NSWindow {
             self.macosWindowButtons = .visible
             self.backgroundBlur = .disabled
             self.macosTitlebarStyle = .default
+            self.macosTabsLocation = .top
             self.windowCornerRadius = 16
             self.tabColorPalette = []
             self.tabBackgroundOpacity = 1.0
@@ -824,6 +828,7 @@ class TerminalWindow: NSWindow {
             self.macosWindowButtons = config.macosWindowButtons
             self.backgroundBlur = config.backgroundBlur
             self.macosTitlebarStyle = config.macosTitlebarStyle
+            self.macosTabsLocation = config.macosTabsLocation
 
             // Set corner radius based on macos-titlebar-style
             // Native, transparent, and hidden styles use 16pt radius

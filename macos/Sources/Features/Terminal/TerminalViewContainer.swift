@@ -5,6 +5,10 @@ import SwiftUI
 /// Modifying `NSThemeFrame` can sometimes be unpredictable.
 class TerminalViewContainer: NSView {
     private let terminalView: NSView
+    private let showsTabStrip: Bool
+
+    /// Bottom tab strip, only present when created with `showsTabStrip`.
+    private(set) var tabStripView: TabStripView?
 
     /// Background color applied with glass effect
     private(set) var glassEffectView: NSView?
@@ -22,8 +26,9 @@ class TerminalViewContainer: NSView {
         return window.value(forKey: "_cornerRadius") as? CGFloat
     }
 
-    init<Root: View>(@ViewBuilder rootView: () -> Root) {
+    init<Root: View>(showsTabStrip: Bool = false, @ViewBuilder rootView: () -> Root) {
         self.terminalView = NSHostingView(rootView: rootView())
+        self.showsTabStrip = showsTabStrip
         super.init(frame: .zero)
         setup()
     }
@@ -55,10 +60,26 @@ class TerminalViewContainer: NSView {
     private func setup() {
         addSubview(terminalView)
         terminalView.translatesAutoresizingMaskIntoConstraints = false
+
+        var terminalBottom = bottomAnchor
+        if showsTabStrip {
+            // The strip owns its height, so the terminal reflows when it shows/hides.
+            let strip = TabStripView()
+            strip.translatesAutoresizingMaskIntoConstraints = false
+            addSubview(strip)
+            NSLayoutConstraint.activate([
+                strip.leadingAnchor.constraint(equalTo: leadingAnchor),
+                strip.trailingAnchor.constraint(equalTo: trailingAnchor),
+                strip.bottomAnchor.constraint(equalTo: bottomAnchor),
+            ])
+            tabStripView = strip
+            terminalBottom = strip.topAnchor
+        }
+
         NSLayoutConstraint.activate([
             terminalView.topAnchor.constraint(equalTo: topAnchor),
             terminalView.leadingAnchor.constraint(equalTo: leadingAnchor),
-            terminalView.bottomAnchor.constraint(equalTo: bottomAnchor),
+            terminalView.bottomAnchor.constraint(equalTo: terminalBottom),
             terminalView.trailingAnchor.constraint(equalTo: trailingAnchor),
         ])
     }

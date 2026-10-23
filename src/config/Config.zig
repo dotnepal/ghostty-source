@@ -3744,7 +3744,7 @@ keybind: Keybinds = .{},
 /// its color is shown instead. After editing the configuration, reload it with
 /// `Cmd+Shift+,`.
 ///
-/// Available since: 1.5.0
+/// Available since: 1.4.0
 @"tab-color-palette": RepeatableTabColorPalette = .{},
 
 /// The active tab background color. Applied when this tab is the focused tab
@@ -3760,7 +3760,7 @@ keybind: Keybinds = .{},
 ///
 /// macOS only.
 ///
-/// Available since: 1.5.0
+/// Available since: 1.4.0
 @"tab-background-active": ?Color = null,
 
 /// The active tab foreground color (text color). Applied when this tab is
@@ -3773,7 +3773,7 @@ keybind: Keybinds = .{},
 ///
 /// macOS only.
 ///
-/// Available since: 1.5.0
+/// Available since: 1.4.0
 @"tab-foreground-active": ?Color = null,
 
 /// The inactive tab background color. Applied to tabs that are not the
@@ -3784,7 +3784,7 @@ keybind: Keybinds = .{},
 ///
 /// macOS only.
 ///
-/// Available since: 1.5.0
+/// Available since: 1.4.0
 @"tab-background-inactive": ?Color = null,
 
 /// The inactive tab foreground color (text color). Applied to tabs that
@@ -3795,7 +3795,7 @@ keybind: Keybinds = .{},
 ///
 /// macOS only.
 ///
-/// Available since: 1.5.0
+/// Available since: 1.4.0
 @"tab-foreground-inactive": ?Color = null,
 
 /// The opacity of tab backgrounds, shared by active and inactive tabs. A
@@ -3805,7 +3805,7 @@ keybind: Keybinds = .{},
 ///
 /// macOS only.
 ///
-/// Available since: 1.5.0
+/// Available since: 1.4.0
 @"tab-background-opacity": f64 = 1.0,
 
 /// Put every surface (tab, split, window) into a transient `systemd` scope.

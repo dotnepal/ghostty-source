@@ -186,9 +186,9 @@ resolution order, accessibility).
 
 ## 11. Known gaps **(synced)**
 
-- The `tab-color-palette` doc comment still calls `bg`/`fg` optional, uses
-  example names (`nord`, `dracula`) that match no swatch, and every key says
-  `Available since: 1.5.0` while the project is at 1.3.2-dev.
+- The keys are marked `Available since: 1.4.0`, the label upstream uses for
+  unreleased features (the latest release is 1.3.1, `main` is 1.3.2-dev). The
+  maintainers may want a different version at merge time.
 - Palette entries whose names don't match a swatch are unreachable from the
   picker.
 - No Swift unit tests for the resolver. Not tested on macOS 26.

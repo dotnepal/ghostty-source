@@ -116,7 +116,7 @@ light/dark appearance is honoured.
 
 ### Wave 3: verify on Sam's Mac
 - [x] Sequoia, `native` style (Sam, 2026-10-23): config-only colors, picked colors, title colors, light/dark switching, Reduce Transparency, Increase Contrast, config reload, right-click swatches, and saved/restored and undone tab colors all work.
-- [ ] Sequoia, remaining styles: `tabs`, `transparent`, `hidden` (colors, picked colors, light/dark, accessibility). `hidden` is expected to fall back to the dot.
+- [x] Sequoia, remaining styles `tabs`, `transparent`, `hidden` (Sam, 2026-10-23: "works fine"; recorded as all three, `hidden` was expected to fall back to the dot).
 - Scope: tab-bar-only coloring is fine (Sam, 2026-10-23); a one-tab window has no tab bar on macOS, so nothing is colored there.
 - [ ] Tahoe: confirm the app builds with Swift 6.2+ (Xcode 26); test on a macOS 26 machine or VM when one is available.
 - [ ] Fix whatever is reported, one round per batch of feedback.

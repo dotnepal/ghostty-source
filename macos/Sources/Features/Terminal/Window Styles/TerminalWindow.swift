@@ -104,6 +104,7 @@ class TerminalWindow: NSWindow {
 
             // Paint tabs when the color changes. This also updates the dot.
             paintTabs()
+            updateTabStrips()
         }
     }
 
@@ -249,6 +250,7 @@ class TerminalWindow: NSWindow {
     override func becomeKey() {
         super.becomeKey()
         resetZoomTabButton.contentTintColor = .controlAccentColor
+        updateTabStrips()
     }
 
     override func resignKey() {
@@ -258,6 +260,7 @@ class TerminalWindow: NSWindow {
 
         // Paint tabs when focus changes (tab may have been switched)
         paintTabs()
+        updateTabStrips()
     }
 
     override func becomeMain() {
@@ -283,6 +286,7 @@ class TerminalWindow: NSWindow {
 
         // Paint tabs with the resolved color style
         paintTabs()
+        updateTabStrips()
     }
 
     override func resignMain() {
@@ -401,6 +405,38 @@ class TerminalWindow: NSWindow {
         for window in tabGroup.windows {
             guard let terminalWindow = window as? TerminalWindow else { continue }
             terminalWindow.paintTab(isActive: window === tabGroup.selectedWindow)
+        }
+    }
+
+    /// Refreshes the bottom tab strip of every window in this window's tab group.
+    /// Each window owns its own strip, so all of them are rebuilt. This is a no-op
+    /// when this window has no strip (`macos-tabs-location = top`).
+    func updateTabStrips() {
+        guard (contentView as? TerminalViewContainer)?.tabStripView != nil else { return }
+
+        let windows = tabGroup?.windows ?? [self]
+        let selected = tabGroup?.selectedWindow
+        let items = windows.map { window in
+            let terminalWindow = window as? TerminalWindow
+            let shortcut = terminalWindow?.keyEquivalent
+            return TabStripItem(
+                window: window,
+                title: window.title,
+                shortcut: shortcut?.isEmpty == false ? shortcut : nil,
+                isActive: selected.map { window === $0 } ?? window.isKeyWindow,
+                style: terminalWindow?.tabColorStyle ?? tabColorStyle)
+        }
+
+        for window in windows {
+            guard let strip = (window.contentView as? TerminalViewContainer)?.tabStripView else { continue }
+            strip.onSelect = { [weak window] target in
+                window?.tabGroup?.selectedWindow = target
+                target.makeKeyAndOrderFront(nil)
+            }
+            strip.onNewTab = { [weak window] in
+                (window as? TerminalWindow)?.terminalController?.newTab(nil)
+            }
+            strip.update(items: items)
         }
     }
 
@@ -532,6 +568,7 @@ class TerminalWindow: NSWindow {
             guard title != oldValue else { return }
 
             syncWindowTitleAppearance()
+            updateTabStrips()
         }
     }
 

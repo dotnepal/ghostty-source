@@ -613,6 +613,8 @@ class TerminalController: BaseTerminalController, TabGroupCloseCoordinator.Contr
                 }
             }
         }
+
+        (window as? TerminalWindow)?.updateTabStrips()
     }
 
     private func fixTabBar() {
@@ -1240,6 +1242,12 @@ class TerminalController: BaseTerminalController, TabGroupCloseCoordinator.Contr
         super.windowWillClose(notification)
         cancelPendingInitialPresentation()
         self.relabelTabs()
+
+        // The closing window is still in its tab group here, so refresh the
+        // strips again once it has been removed.
+        if let remaining = window?.tabGroup?.windows.first(where: { $0 !== window }) as? TerminalWindow {
+            DispatchQueue.main.async { [weak remaining] in remaining?.updateTabStrips() }
+        }
 
         // If we remove a window, we reset the cascade point to the key window so that
         // the next window cascade's from that one.

@@ -248,17 +248,20 @@ test "c_get: tab_color_palette" {
     var c = try Config.default(alloc);
     defer c.deinit();
 
-    // Empty palette should return empty list
-    const empty_ptr: *const tab_color.TabColorPaletteListC = @ptrCast(&c.@"tab-color-palette");
-    try testing.expectEqual(@as(usize, 0), empty_ptr.len);
+    // Empty palette should return an empty list, through the C getter too.
+    var list: tab_color.TabColorPaletteListC = undefined;
+    try testing.expect(get(&c, .@"tab-color-palette", @ptrCast(&list)));
+    try testing.expectEqual(@as(usize, 0), list.len);
+    try testing.expect(list.palettes == null);
 
     // Parse a palette entry. Config values are owned by the config's arena.
     var arena = std.heap.ArenaAllocator.init(alloc);
     defer arena.deinit();
     try c.@"tab-color-palette".parseCLI(arena.allocator(), "nord:bg=#2e3440,fg=#d8dee9");
 
-    const ptr: *const tab_color.TabColorPaletteListC = @ptrCast(&c.@"tab-color-palette");
-    try testing.expectEqual(@as(usize, 1), ptr.len);
+    try testing.expect(get(&c, .@"tab-color-palette", @ptrCast(&list)));
+    try testing.expectEqual(@as(usize, 1), list.len);
+    try testing.expectEqual(@as(u8, 0x2e), list.palettes.?[0].bg[0]);
 }
 
 test "c_get: tab colors" {

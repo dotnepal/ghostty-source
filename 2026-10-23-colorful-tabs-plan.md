@@ -133,6 +133,8 @@ light/dark appearance is honoured.
 
 ## Notes
 
+- Found 2026-10-23 while testing: with no `tab-color-palette` set, `RepeatableTabColorPalette.cval()` cast a null pointer to a non-null one and the app panicked on launch. `TabColorPaletteListC.palettes` is now optional (null when empty), and tests cover the empty list through `c_get`. The earlier `c_get` test reinterpreted the config field as the C struct and could not have caught this.
+
 - Found 2026-10-23 while testing: the Wave 1 config fields were declared as `tab_background_active` etc., so the parser reported `unknown field` for every `tab-*` key. Renamed to kebab-case (`@"tab-background-active"`), with a config-file load test. The Wave 1 tests missed it because they used the same wrong names.
 
 - Commit `9506f46`'s message lists six files, but it only adds `tab_color.zig`; the rest landed in `cd9efc3`.

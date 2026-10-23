@@ -149,7 +149,8 @@ pub const TabColorPaletteC = extern struct {
 // C-compatible list representation for the FFI layer.
 // Matches ghostty_config_tab_color_palette_list_s in ghostty.h.
 pub const TabColorPaletteListC = extern struct {
-    palettes: [*]const TabColorPaletteC,
+    /// Null when the list is empty.
+    palettes: ?[*]const TabColorPaletteC,
     len: usize,
 };
 
@@ -415,23 +416,30 @@ pub const RepeatableTabColorPalette = struct {
         try list.parseCLI(alloc, "b:bg=#0a0b0c,fg=#0d0e0f,inactive-bg=#101112");
         try list.parseCLI(alloc, "c:bg=#202122,fg=#232425,inactive-fg=#262728");
 
+        // An empty list has no C data, and must not trip a null pointer cast.
+        var empty: RepeatableTabColorPalette = .{};
+        try testing.expectEqual(@as(usize, 0), empty.cval().len);
+        try testing.expect(empty.cval().palettes == null);
+        try empty.parseCLI(alloc, "");
+        try testing.expectEqual(@as(usize, 0), empty.cval().len);
+
         const c = list.cval();
         try testing.expectEqual(@as(usize, 3), c.len);
-        try testing.expectEqualStrings("a", c.palettes[0].name[0..c.palettes[0].name_len]);
-        try testing.expectEqual([3]u8{ 1, 2, 3 }, c.palettes[0].bg);
-        try testing.expectEqual(@as(u8, 0), c.palettes[0].has_inactive_bg);
-        try testing.expectEqualStrings("b", c.palettes[1].name[0..c.palettes[1].name_len]);
-        try testing.expectEqual(@as(u8, 1), c.palettes[1].has_inactive_bg);
-        try testing.expectEqual([3]u8{ 0x10, 0x11, 0x12 }, c.palettes[1].inactive_bg);
-        try testing.expectEqualStrings("c", c.palettes[2].name[0..c.palettes[2].name_len]);
-        try testing.expectEqual(@as(u8, 1), c.palettes[2].has_inactive_fg);
+        try testing.expectEqualStrings("a", c.palettes.?[0].name[0..c.palettes.?[0].name_len]);
+        try testing.expectEqual([3]u8{ 1, 2, 3 }, c.palettes.?[0].bg);
+        try testing.expectEqual(@as(u8, 0), c.palettes.?[0].has_inactive_bg);
+        try testing.expectEqualStrings("b", c.palettes.?[1].name[0..c.palettes.?[1].name_len]);
+        try testing.expectEqual(@as(u8, 1), c.palettes.?[1].has_inactive_bg);
+        try testing.expectEqual([3]u8{ 0x10, 0x11, 0x12 }, c.palettes.?[1].inactive_bg);
+        try testing.expectEqualStrings("c", c.palettes.?[2].name[0..c.palettes.?[2].name_len]);
+        try testing.expectEqual(@as(u8, 1), c.palettes.?[2].has_inactive_fg);
 
         // Overwriting keeps the length and updates the C data in place.
         try list.parseCLI(alloc, "b:bg=#ffffff,fg=#000000");
         const c2 = list.cval();
         try testing.expectEqual(@as(usize, 3), c2.len);
-        try testing.expectEqual([3]u8{ 0xff, 0xff, 0xff }, c2.palettes[1].bg);
-        try testing.expectEqual(@as(u8, 0), c2.palettes[1].has_inactive_bg);
+        try testing.expectEqual([3]u8{ 0xff, 0xff, 0xff }, c2.palettes.?[1].bg);
+        try testing.expectEqual(@as(u8, 0), c2.palettes.?[1].has_inactive_bg);
     }
 
     test "RepeatableTabColorPalette clone" {

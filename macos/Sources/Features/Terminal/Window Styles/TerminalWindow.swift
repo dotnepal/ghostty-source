@@ -445,6 +445,9 @@ class TerminalWindow: NSWindow {
             strip.onNewTab = { [weak window] in
                 (window as? TerminalWindow)?.terminalController?.newTab(nil)
             }
+            strip.onContextMenu = { [weak window] target in
+                (window as? TerminalWindow)?.makeTabStripContextMenu(for: target)
+            }
             strip.update(items: items)
         }
     }
@@ -1028,6 +1031,21 @@ extension TerminalWindow {
 
         let selectorNames = Set(menu.items.compactMap { $0.action }.map { NSStringFromSelector($0) })
         return requiredSelectors.isSubset(of: selectorNames)
+    }
+
+    /// The right-click menu for a tab on the bottom strip. The native tab menu is not
+    /// available there, so this offers the same tab actions: close, rename and color.
+    func makeTabStripContextMenu(for tabWindow: NSWindow) -> NSMenu {
+        let controller = tabWindow.windowController as? TerminalController
+
+        let menu = NSMenu()
+        let closeItem = NSMenuItem(title: "Close Tab", action: #selector(TerminalController.closeTab(_:)), keyEquivalent: "")
+        closeItem.target = controller
+        closeItem.setImageIfDesired(systemSymbolName: "xmark")
+        menu.addItem(closeItem)
+
+        appendTabModifierSection(to: menu, target: controller)
+        return menu
     }
 
     private func appendTabModifierSection(to menu: NSMenu, target: TerminalController?) {

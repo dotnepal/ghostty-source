@@ -3705,11 +3705,6 @@ keybind: Keybinds = .{},
 /// This configuration key can be repeated to define multiple palettes.
 /// Duplicate names overwrite earlier entries with the same name.
 ///
-/// Example:
-///
-///   `tab-color-palette = nord:bg=#2e3440,fg=#d8dee9`
-///   `tab-color-palette = dracula:bg=#282a36,fg=#f8f8f2,inactive-bg=#1e1f29,inactive-fg=#6272a4`
-///
 /// Walkthrough:
 ///
 /// The right-click color picker has nine swatches: blue, purple, pink, red,
@@ -3721,6 +3716,9 @@ keybind: Keybinds = .{},
 ///   `tab-color-palette = blue:bg=#5e81ac,fg=#ffffff`
 ///   `tab-color-palette = red:bg=#bf616a,fg=#ffffff`
 ///   `tab-color-palette = graphite:bg=#4c566a,fg=#eceff4,inactive-bg=#3b4252,inactive-fg=#a0a8b8`
+///
+/// Here `graphite` sets its inactive colors itself, while `blue` and `red`
+/// leave them unset, so they are dimmed from `bg` and `fg`.
 ///
 /// The colors of a tab are chosen like this:
 ///

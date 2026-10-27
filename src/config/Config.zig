@@ -37,6 +37,7 @@ const RepeatableReadableIO = @import("io.zig").RepeatableReadableIO;
 const RepeatableStringMap = @import("RepeatableStringMap.zig");
 pub const Path = @import("path.zig").Path;
 pub const RepeatablePath = @import("path.zig").RepeatablePath;
+pub const RepeatableTabColorPalette = @import("tab_color.zig").RepeatableTabColorPalette;
 const ClipboardCodepointMap = @import("ClipboardCodepointMap.zig");
 const KeyRemapSet = @import("../input/key_mods.zig").RemapSet;
 pub const WindowPaddingBalance = @import("../renderer/size.zig").PaddingBalance;
@@ -3689,6 +3690,124 @@ keybind: Keybinds = .{},
 /// Available since: 1.2.0
 @"macos-shortcuts": MacShortcuts = .ask,
 
+/// The tab color palette for the right-click color picker on macOS.
+///
+/// Each palette entry is a named color with an active background and
+/// foreground color (`bg` and `fg`, both required) and optional inactive
+/// background and foreground colors. The format is:
+///
+///   `name:bg=#RRGGBB,fg=#RRGGBB,inactive-bg=#RRGGBB,inactive-fg=#RRGGBB`
+///
+/// All color values support hex format (`#RRGGBB` or `RRGGBB`).
+/// The `inactive-bg` and `inactive-fg` keys are optional; when omitted
+/// the inactive colors default to a dimmed version of the active colors.
+///
+/// This configuration key can be repeated to define multiple palettes.
+/// Duplicate names overwrite earlier entries with the same name.
+///
+/// Walkthrough:
+///
+/// The right-click color picker has nine swatches: blue, purple, pink, red,
+/// orange, yellow, green, teal and graphite. An entry changes the swatch with
+/// the same name, ignoring case. Swatches without an entry keep their system
+/// color, and an entry with any other name has no swatch. Names may only
+/// contain letters and digits. To change the look of the picker swatches:
+///
+///   `tab-color-palette = blue:bg=#5e81ac,fg=#ffffff`
+///   `tab-color-palette = red:bg=#bf616a,fg=#ffffff`
+///   `tab-color-palette = graphite:bg=#4c566a,fg=#eceff4,inactive-bg=#3b4252,inactive-fg=#a0a8b8`
+///
+/// Here `graphite` sets its inactive colors itself, while `blue` and `red`
+/// leave them unset, so they are dimmed from `bg` and `fg`.
+///
+/// The colors of a tab are chosen like this:
+///
+///   1. If a color is picked for the tab, the entry with the same name is
+///      used. With no such entry, the background is the system color and the
+///      text color is `tab-foreground-active` (`tab-foreground-inactive` when
+///      the tab is not selected).
+///   2. If no color is picked, the `tab-background-*` and `tab-foreground-*`
+///      keys are used.
+///   3. If none of those are set, tabs look the same as they always have.
+///
+/// Because of the first rule, an entry's `fg` is used for a picked tab even if
+/// `tab-foreground-active` is set. Inactive colors that are not set are the
+/// active colors dimmed to 65%.
+///
+/// These are applied on top, using the macOS accessibility settings: Reduce
+/// Transparency makes tab backgrounds fully opaque, and Increase Contrast
+/// makes text black or white when its contrast ratio with the background is
+/// below 4.5:1. Tab colors also follow the light and dark appearance.
+///
+/// Colors are painted wherever macOS shows a tab bar, and macOS hides the bar
+/// when a window has only one tab. If a tab can't be painted, a small dot in
+/// its color is shown instead. After editing the configuration, reload it with
+/// `Cmd+Shift+,`.
+///
+/// Available since: 1.4.0
+@"tab-color-palette": RepeatableTabColorPalette = .{},
+
+/// The active tab background color. Applied when this tab is the focused tab
+/// in its window. A tab color picked from the right-click menu takes
+/// precedence when a `tab-color-palette` entry has the same name.
+///
+/// If none of the `tab-*` color keys are set, tabs look the same as before.
+///
+/// Valid values:
+///
+///   - Hex (`#RRGGBB` or `RRGGBB`)
+///   - Named X11 color
+///
+/// macOS only.
+///
+/// Available since: 1.4.0
+@"tab-background-active": ?Color = null,
+
+/// The active tab foreground color (text color). Applied when this tab is
+/// the focused tab in its window. Accepts the same values as
+/// `tab-background-active`.
+///
+/// A tab with a color picked from the right-click menu uses the `fg` of the
+/// `tab-color-palette` entry with the same name instead of this key, when
+/// there is such an entry.
+///
+/// macOS only.
+///
+/// Available since: 1.4.0
+@"tab-foreground-active": ?Color = null,
+
+/// The inactive tab background color. Applied to tabs that are not the
+/// focused tab in their window. Accepts the same values as
+/// `tab-background-active`.
+///
+/// If unset, it is `tab-background-active` dimmed to 65%.
+///
+/// macOS only.
+///
+/// Available since: 1.4.0
+@"tab-background-inactive": ?Color = null,
+
+/// The inactive tab foreground color (text color). Applied to tabs that
+/// are not the focused tab in their window. Accepts the same values as
+/// `tab-background-active`.
+///
+/// If unset, it is `tab-foreground-active` dimmed to 65%.
+///
+/// macOS only.
+///
+/// Available since: 1.4.0
+@"tab-foreground-inactive": ?Color = null,
+
+/// The opacity of tab backgrounds, shared by active and inactive tabs. A
+/// value of `1.0` is fully opaque. The value is clamped to the range
+/// `[0.01, 1.0]`. It is forced to `1.0` when the macOS Reduce Transparency
+/// accessibility setting is on.
+///
+/// macOS only.
+///
+/// Available since: 1.4.0
+@"tab-background-opacity": f64 = 1.0,
+
 /// Put every surface (tab, split, window) into a transient `systemd` scope.
 ///
 /// This allows per-surface resource management. For example, if a shell program
@@ -4147,6 +4266,32 @@ fn loadReader(self: *Config, alloc: Allocator, reader: *std.Io.Reader, path: []c
     var iter: cli.args.LineIterator = .{ .r = reader, .filepath = path };
     try self.loadIter(alloc, &iter);
     try self.expandPaths(std.fs.path.dirname(path).?);
+}
+
+test "tab color keys load from config files" {
+    const testing = std.testing;
+    const alloc = testing.allocator;
+
+    const data =
+        \\tab-background-active = #3b4252
+        \\tab-foreground-active = #eceff4
+        \\tab-background-inactive = #2e3440
+        \\tab-foreground-inactive = #81a1c1
+        \\tab-background-opacity = 0.5
+        \\tab-color-palette = blue:bg=#5e81ac,fg=#ffffff
+        \\
+    ;
+    var reader: std.Io.Reader = .fixed(data);
+    var cfg = try Config.default(alloc);
+    defer cfg.deinit();
+    try cfg.loadReader(alloc, &reader, "/home/ghostty/.config/ghostty/config.ghostty");
+    try cfg.finalize();
+
+    try testing.expect(cfg._diagnostics.empty());
+    try testing.expectEqual(Color{ .r = 0x3b, .g = 0x42, .b = 0x52 }, cfg.@"tab-background-active".?);
+    try testing.expectEqual(Color{ .r = 0x81, .g = 0xa1, .b = 0xc1 }, cfg.@"tab-foreground-inactive".?);
+    try testing.expectEqual(@as(f64, 0.5), cfg.@"tab-background-opacity");
+    try testing.expectEqual(@as(usize, 1), cfg.@"tab-color-palette".value.items.len);
 }
 
 test "handle bom in config files" {

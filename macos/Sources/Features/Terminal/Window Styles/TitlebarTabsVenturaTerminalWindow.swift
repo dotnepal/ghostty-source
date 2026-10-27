@@ -227,7 +227,11 @@ class TitlebarTabsVenturaTerminalWindow: TerminalWindow {
 			guard let activeTabBackgroundView = titlebarContainer.firstDescendant(withClassName: "NSTabButton")?.superview?.subviews.last?.firstDescendant(withID: "_backgroundView")
 			else { return }
 
-			activeTabBackgroundView.layer?.backgroundColor = titlebarColor.cgColor
+			// A configured tab color wins over the very dark background treatment.
+			let selectedStyle = (tabGroup.selectedWindow as? TerminalWindow)?.tabColorStyle
+			if selectedStyle?.activeBackground == nil && selectedStyle?.inactiveBackground == nil {
+				activeTabBackgroundView.layer?.backgroundColor = titlebarColor.cgColor
+			}
 			titlebarContainer.layer?.backgroundColor = titlebarColor.highlight(withLevel: 0.14)?.cgColor
 		} else {
 			titlebarContainer.layer?.backgroundColor = titlebarColor.cgColor

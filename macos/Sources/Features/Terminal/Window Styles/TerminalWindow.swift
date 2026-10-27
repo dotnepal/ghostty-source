@@ -104,6 +104,7 @@ class TerminalWindow: NSWindow {
 
             // Paint tabs when the color changes. This also updates the dot.
             paintTabs()
+            updateTabStrips()
         }
     }
 
@@ -249,6 +250,7 @@ class TerminalWindow: NSWindow {
     override func becomeKey() {
         super.becomeKey()
         resetZoomTabButton.contentTintColor = .controlAccentColor
+        updateTabStrips()
     }
 
     override func resignKey() {
@@ -258,6 +260,7 @@ class TerminalWindow: NSWindow {
 
         // Paint tabs when focus changes (tab may have been switched)
         paintTabs()
+        updateTabStrips()
     }
 
     override func becomeMain() {
@@ -272,8 +275,11 @@ class TerminalWindow: NSWindow {
         }
         viewModel.isMainWindow = true
 
+        hideNativeTabBarIfNeeded()
+
         // Paint tabs with the resolved color style
         paintTabs()
+        updateTabStrips()
     }
 
     override func resignMain() {
@@ -283,7 +289,11 @@ class TerminalWindow: NSWindow {
 
     @discardableResult
     func beginInlineTabTitleEdit(for targetWindow: NSWindow) -> Bool {
-        tabTitleEditor.beginEditing(for: targetWindow)
+        // The native tab bar is hidden in bottom mode, so there is no visible tab to
+        // edit in place. Callers fall back to the title prompt.
+        if derivedConfig.macosTabsLocation == .bottom { return false }
+
+        return tabTitleEditor.beginEditing(for: targetWindow)
     }
 
     @objc private func renameTabFromContextMenu(_ sender: NSMenuItem) {
@@ -392,6 +402,57 @@ class TerminalWindow: NSWindow {
         for window in tabGroup.windows {
             guard let terminalWindow = window as? TerminalWindow else { continue }
             terminalWindow.paintTab(isActive: window === tabGroup.selectedWindow)
+        }
+    }
+
+    /// In bottom mode, hides the native tab bar while keeping the tab group so tabs
+    /// stay grouped and selectable (the bottom strip replaces it). The bar is a
+    /// titlebar accessory, so hiding the accessory is safe to repeat. (`toggleTabBar`
+    /// does not work here: the group keeps reporting the bar as visible.)
+    private func hideNativeTabBarIfNeeded() {
+        guard derivedConfig.macosTabsLocation == .bottom else { return }
+        for accessory in titlebarAccessoryViewControllers where isTabBar(accessory) {
+            accessory.isHidden = true
+        }
+    }
+
+    /// Refreshes the bottom tab strip of every window in this window's tab group.
+    /// Each window owns its own strip, so all of them are rebuilt. This is a no-op
+    /// when this window has no strip (`macos-tabs-location = top`).
+    func updateTabStrips() {
+        guard (contentView as? TerminalViewContainer)?.tabStripView != nil else { return }
+
+        // AppKit shows the native bar a runloop turn after a tab is added, so
+        // check now and once more after it has settled.
+        hideNativeTabBarIfNeeded()
+        DispatchQueue.main.async { [weak self] in self?.hideNativeTabBarIfNeeded() }
+
+        let windows = tabGroup?.windows ?? [self]
+        let selected = tabGroup?.selectedWindow
+        let items = windows.map { window in
+            let terminalWindow = window as? TerminalWindow
+            let shortcut = terminalWindow?.keyEquivalent
+            return TabStripItem(
+                window: window,
+                title: window.title,
+                shortcut: shortcut?.isEmpty == false ? shortcut : nil,
+                isActive: selected.map { window === $0 } ?? window.isKeyWindow,
+                style: terminalWindow?.tabColorStyle ?? tabColorStyle)
+        }
+
+        for window in windows {
+            guard let strip = (window.contentView as? TerminalViewContainer)?.tabStripView else { continue }
+            strip.onSelect = { [weak window] target in
+                window?.tabGroup?.selectedWindow = target
+                target.makeKeyAndOrderFront(nil)
+            }
+            strip.onNewTab = { [weak window] in
+                (window as? TerminalWindow)?.terminalController?.newTab(nil)
+            }
+            strip.onContextMenu = { [weak window] target in
+                (window as? TerminalWindow)?.makeTabStripContextMenu(for: target)
+            }
+            strip.update(items: items)
         }
     }
 
@@ -523,6 +584,7 @@ class TerminalWindow: NSWindow {
             guard title != oldValue else { return }
 
             syncWindowTitleAppearance()
+            updateTabStrips()
         }
     }
 
@@ -786,6 +848,7 @@ class TerminalWindow: NSWindow {
         let backgroundOpacity: Double
         let macosWindowButtons: Ghostty.MacOSWindowButtons
         let macosTitlebarStyle: Ghostty.Config.MacOSTitlebarStyle
+        let macosTabsLocation: Ghostty.Config.MacOSTabsLocation
         let windowCornerRadius: CGFloat
         let tabColorPalette: [Ghostty.Config.TabColorPaletteEntry]
         let tabBackgroundOpacity: Double
@@ -801,6 +864,7 @@ class TerminalWindow: NSWindow {
             self.macosWindowButtons = .visible
             self.backgroundBlur = .disabled
             self.macosTitlebarStyle = .default
+            self.macosTabsLocation = .top
             self.windowCornerRadius = 16
             self.tabColorPalette = []
             self.tabBackgroundOpacity = 1.0
@@ -817,6 +881,7 @@ class TerminalWindow: NSWindow {
             self.macosWindowButtons = config.macosWindowButtons
             self.backgroundBlur = config.backgroundBlur
             self.macosTitlebarStyle = config.macosTitlebarStyle
+            self.macosTabsLocation = config.macosTabsLocation
 
             // Set corner radius based on macos-titlebar-style
             // Native, transparent, and hidden styles use 16pt radius
@@ -970,6 +1035,21 @@ extension TerminalWindow {
 
         let selectorNames = Set(menu.items.compactMap { $0.action }.map { NSStringFromSelector($0) })
         return requiredSelectors.isSubset(of: selectorNames)
+    }
+
+    /// The right-click menu for a tab on the bottom strip. The native tab menu is not
+    /// available there, so this offers the same tab actions: close, rename and color.
+    func makeTabStripContextMenu(for tabWindow: NSWindow) -> NSMenu {
+        let controller = tabWindow.windowController as? TerminalController
+
+        let menu = NSMenu()
+        let closeItem = NSMenuItem(title: "Close Tab", action: #selector(TerminalController.closeTab(_:)), keyEquivalent: "")
+        closeItem.target = controller
+        closeItem.setImageIfDesired(systemSymbolName: "xmark")
+        menu.addItem(closeItem)
+
+        appendTabModifierSection(to: menu, target: controller)
+        return menu
     }
 
     private func appendTabModifierSection(to menu: NSMenu, target: TerminalController?) {

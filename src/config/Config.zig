@@ -3591,6 +3591,23 @@ keybind: Keybinds = .{},
 /// Available since: 1.4.0
 @"macos-float-on-top-indicator": bool = true,
 
+/// If true, Ghostty shows a badge in the top-right corner of the window
+/// while a split pane is zoomed.
+///
+/// Set this to false to disable the badge.
+///
+/// Available since: 1.4.0
+@"macos-split-zoom-indicator": bool = true,
+
+/// The absolute path to a PNG image used in place of the built-in symbol
+/// on the split zoom badge. The `~/` prefix is expanded.
+///
+/// If this is unset or the file can't be read, the built-in
+/// `arrow.up.left.and.arrow.down.right` symbol is used.
+///
+/// Available since: 1.4.0
+@"macos-split-zoom-indicator-image": ?[:0]const u8 = null,
+
 /// If true, Ghostty exposes and handles the built-in AppleScript dictionary
 /// on macOS.
 ///

@@ -671,6 +671,24 @@ extension Ghostty {
             return v
         }
 
+        var macosSplitZoomIndicator: Bool {
+            guard let config = self.config else { return true }
+            var v = true
+            let key = "macos-split-zoom-indicator"
+            _ = ghostty_config_get(config, &v, key, UInt(key.lengthOfBytes(using: .utf8)))
+            return v
+        }
+
+        var macosSplitZoomIndicatorImage: String? {
+            guard let config = self.config else { return nil }
+            var v: UnsafePointer<Int8>?
+            let key = "macos-split-zoom-indicator-image"
+            guard ghostty_config_get(config, &v, key, UInt(key.lengthOfBytes(using: .utf8))) else { return nil }
+            guard let ptr = v else { return nil }
+            guard let path = NSString(utf8String: ptr), path.length > 0 else { return nil }
+            return path.expandingTildeInPath
+        }
+
         var macosAppleScript: Bool {
             guard let config = self.config else { return true }
             var v = false

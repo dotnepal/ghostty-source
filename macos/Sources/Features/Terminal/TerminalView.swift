@@ -35,6 +35,12 @@ protocol TerminalViewModel: ObservableObject {
 
     /// The update overlay should be visible.
     var updateOverlayIsVisible: Bool { get }
+
+    /// Whether the window floats on top of other windows.
+    var isFloatingOnTop: Bool { get }
+
+    /// The latest float on top change, shown briefly. Nil when nothing is showing.
+    var floatOnTopToast: FloatOnTopToast? { get }
 }
 
 /// The main terminal view. This terminal view supports splits.
@@ -115,6 +121,12 @@ struct TerminalView<ViewModel: TerminalViewModel>: View {
                         updateViewModel: (NSApp.delegate as? AppDelegate)?.updateViewModel) { action in
                         self.delegate?.performAction(action, on: surfaceView)
                     }
+                }
+
+                if ghostty.config.macosFloatOnTopIndicator {
+                    FloatOnTopIndicator(
+                        isFloating: viewModel.isFloatingOnTop,
+                        toast: viewModel.floatOnTopToast)
                 }
 
                 // Show update information above all else.

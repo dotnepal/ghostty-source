@@ -129,6 +129,12 @@ struct TerminalView<ViewModel: TerminalViewModel>: View {
                         toast: viewModel.floatOnTopToast)
                 }
 
+                if ghostty.config.macosSplitZoomIndicator {
+                    SplitZoomIndicator(
+                        isZoomed: viewModel.surfaceTree.zoomed != nil,
+                        imagePath: ghostty.config.macosSplitZoomIndicatorImage)
+                }
+
                 // Show update information above all else.
                 if viewModel.updateOverlayIsVisible {
                     UpdateOverlay()

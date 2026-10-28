@@ -25,8 +25,11 @@ final class TabStripView: NSView {
     private let newTabButton = NSButton()
     private lazy var heightConstraint = heightAnchor.constraint(equalToConstant: 0)
 
-    override init(frame frameRect: NSRect) {
-        super.init(frame: frameRect)
+    private let titleFont: NSFont
+
+    init(titleFont: NSFont = .systemFont(ofSize: NSFont.smallSystemFontSize)) {
+        self.titleFont = titleFont
+        super.init(frame: .zero)
         setup()
     }
 
@@ -86,7 +89,7 @@ final class TabStripView: NSView {
         guard items.count >= 2 else { return }
 
         for item in items {
-            let tab = TabStripTabView(item: item)
+            let tab = TabStripTabView(item: item, titleFont: titleFont)
             tab.onClick = { [weak self] window in
                 self?.onSelect?(window)
             }
@@ -121,7 +124,7 @@ private final class TabStripTabView: NSView {
     private let titleLabel = NSTextField(labelWithString: "")
     private let shortcutLabel = NSTextField(labelWithString: "")
 
-    init(item: TabStripItem) {
+    init(item: TabStripItem, titleFont: NSFont) {
         self.item = item
         super.init(frame: .zero)
         translatesAutoresizingMaskIntoConstraints = false
@@ -131,7 +134,7 @@ private final class TabStripTabView: NSView {
         titleLabel.alignment = .center
         titleLabel.lineBreakMode = .byTruncatingTail
         titleLabel.maximumNumberOfLines = 1
-        titleLabel.font = .systemFont(ofSize: NSFont.smallSystemFontSize)
+        titleLabel.font = titleFont
         titleLabel.translatesAutoresizingMaskIntoConstraints = false
         titleLabel.setContentCompressionResistancePriority(.defaultLow, for: .horizontal)
         addSubview(titleLabel)

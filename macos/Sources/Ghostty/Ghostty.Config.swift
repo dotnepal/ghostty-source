@@ -371,6 +371,33 @@ extension Ghostty {
             return MacOSTabsLocation(rawValue: String(cString: ptr)) ?? defaultValue
         }
 
+        var macosTabTitleFontSize: CGFloat {
+            guard let config = self.config else { return 11 }
+            var v: Double = 11
+            let key = "macos-tab-title-font-size"
+            _ = ghostty_config_get(config, &v, key, UInt(key.lengthOfBytes(using: .utf8)))
+            return CGFloat(v)
+        }
+
+        var macosTabTitleFontFamily: String? {
+            guard let config = self.config else { return nil }
+            var v: UnsafePointer<Int8>?
+            let key = "macos-tab-title-font-family"
+            guard ghostty_config_get(config, &v, key, UInt(key.lengthOfBytes(using: .utf8))) else { return nil }
+            guard let ptr = v else { return nil }
+            return String(cString: ptr)
+        }
+
+        /// The font for the bottom tab strip titles, from the family and size configs.
+        var macosTabTitleFont: NSFont {
+            let size = macosTabTitleFontSize
+            guard let family = macosTabTitleFontFamily,
+                  let font = NSFont(name: family, size: size) else {
+                return .systemFont(ofSize: size)
+            }
+            return font
+        }
+
         var macosTitlebarProxyIcon: MacOSTitlebarProxyIcon {
             let defaultValue = MacOSTitlebarProxyIcon.visible
             guard let config = self.config else { return defaultValue }

@@ -3472,6 +3472,28 @@ keybind: Keybinds = .{},
 /// Available since: 1.4.0
 @"macos-tabs-location": MacTabsLocation = .top,
 
+/// The font size, in points, of the tab titles in the bottom tab strip.
+///
+/// This only applies when `macos-tabs-location = bottom`. Changing this
+/// option at runtime only applies to new windows.
+///
+/// This setting is only supported on macOS.
+@"macos-tab-title-font-size": f64 = 11,
+
+/// The font family of the tab titles in the bottom tab strip.
+///
+/// If this setting is left unset, the system default font will be used. If
+/// the family can't be found, the system default font is used as well.
+///
+/// Note: any font available on the system may be used, this font is not
+/// required to be a fixed-width font.
+///
+/// This only applies when `macos-tabs-location = bottom`. Changing this
+/// option at runtime only applies to new windows.
+///
+/// This setting is only supported on macOS.
+@"macos-tab-title-font-family": ?[:0]const u8 = null,
+
 /// Whether the proxy icon in the macOS titlebar is visible. The proxy icon
 /// is the icon that represents the folder of the current working directory.
 /// You can see this very clearly in the macOS built-in Terminal.app

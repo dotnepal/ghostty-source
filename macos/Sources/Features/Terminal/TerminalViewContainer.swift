@@ -7,6 +7,7 @@ class TerminalViewContainer: NSView {
     private let terminalView: NSView
     private let showsTabStrip: Bool
     private let tabTitleFont: NSFont
+    private let tabHeight: CGFloat
 
     /// Bottom tab strip, only present when created with `showsTabStrip`.
     private(set) var tabStripView: TabStripView?
@@ -30,11 +31,13 @@ class TerminalViewContainer: NSView {
     init<Root: View>(
         showsTabStrip: Bool = false,
         tabTitleFont: NSFont = .systemFont(ofSize: NSFont.smallSystemFontSize),
+        tabHeight: CGFloat = TabStripView.defaultHeight,
         @ViewBuilder rootView: () -> Root
     ) {
         self.terminalView = NSHostingView(rootView: rootView())
         self.showsTabStrip = showsTabStrip
         self.tabTitleFont = tabTitleFont
+        self.tabHeight = tabHeight
         super.init(frame: .zero)
         setup()
     }
@@ -70,7 +73,7 @@ class TerminalViewContainer: NSView {
         var terminalBottom = bottomAnchor
         if showsTabStrip {
             // The strip owns its height, so the terminal reflows when it shows/hides.
-            let strip = TabStripView(titleFont: tabTitleFont)
+            let strip = TabStripView(titleFont: tabTitleFont, height: tabHeight)
             strip.translatesAutoresizingMaskIntoConstraints = false
             addSubview(strip)
             NSLayoutConstraint.activate([

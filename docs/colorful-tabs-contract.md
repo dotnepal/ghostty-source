@@ -18,6 +18,7 @@ All keys are optional. If **none** are set, tabs behave exactly as they do today
 | `tab-foreground-inactive` | `?Color` | `tab-foreground-active` dimmed to 65% | Tab foreground for the other tabs. |
 | `tab-background-opacity` | `f64` | `1.0` | Shared by active and inactive tabs. Clamped to [0.01, 1.0]. |
 | `tab-color-palette` | `RepeatableTabColorPalette` | — | Named palette for the right-click tab color picker. Repeatable. |
+| `macos-tab-height` | `u32` | `28` | **(synced)** Height of the bottom tab strip. Full docs are generated from the doc comment in `src/config/Config.zig`: run `ghostty +show-config --default --docs \| grep -A 25 macos-tab-height` or see `man 5 ghostty`. |
 
 **(synced)** Config keys are declared in kebab-case in `Config.zig`
 (`@"tab-background-active"`), like every other key; the parser matches names

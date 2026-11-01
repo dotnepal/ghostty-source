@@ -398,6 +398,20 @@ extension Ghostty {
             return font
         }
 
+        /// The height of the bottom tab strip, clamped to a usable range.
+        /// Keep the default and range in sync with the `macos-tab-height` doc
+        /// comment in `src/config/Config.zig`, the source of the generated docs.
+        var macosTabHeight: CGFloat {
+            let defaultValue: CGFloat = 28
+            guard let config = self.config else { return defaultValue }
+            var v: CUnsignedInt = 28
+            let key = "macos-tab-height"
+            guard ghostty_config_get(config, &v, key, UInt(key.lengthOfBytes(using: .utf8))) else {
+                return defaultValue
+            }
+            return min(max(CGFloat(v), 16), 128)
+        }
+
         var macosTitlebarProxyIcon: MacOSTitlebarProxyIcon {
             let defaultValue = MacOSTitlebarProxyIcon.visible
             guard let config = self.config else { return defaultValue }

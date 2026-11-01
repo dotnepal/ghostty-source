@@ -3494,6 +3494,28 @@ keybind: Keybinds = .{},
 /// This setting is only supported on macOS.
 @"macos-tab-title-font-family": ?[:0]const u8 = null,
 
+/// The height, in points, of the bottom tab strip. The default is 28.
+///
+/// Values are clamped to the range 16 to 128. If the height is smaller than
+/// the tab title font, the title is clipped; raise this value together with
+/// `macos-tab-title-font-size`.
+///
+/// This only applies when `macos-tabs-location = bottom`. Changing this
+/// option at runtime resizes the strip of every open window on config
+/// reload.
+///
+/// Why only the bottom strip: the tab bar used for `macos-tabs-location = top`
+/// is the native macOS tab bar. It is drawn by AppKit and macOS offers no
+/// public API to change its height, so resizing it would rely on private
+/// views that can break with any macOS update. The bottom strip is drawn by
+/// Ghostty itself, so its height can be set safely.
+///
+/// This setting is only supported on macOS. The Linux (GTK) tab bar is a
+/// libadwaita widget that has no height setting either.
+///
+/// Available since: 1.4.1
+@"macos-tab-height": u32 = 28,
+
 /// Whether the proxy icon in the macOS titlebar is visible. The proxy icon
 /// is the icon that represents the folder of the current working directory.
 /// You can see this very clearly in the macOS built-in Terminal.app

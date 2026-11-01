@@ -6,7 +6,7 @@ import AppKit
 /// The strip owns its height: with fewer than two tabs it collapses to zero
 /// (like the native tab bar), so a neighbour anchored to its top anchor reflows.
 final class TabStripView: NSView {
-    static let height: CGFloat = 28
+    static let defaultHeight: CGFloat = 28
 
     /// Width of the trailing "+" button.
     private static let newTabButtonWidth: CGFloat = 32
@@ -26,9 +26,14 @@ final class TabStripView: NSView {
     private lazy var heightConstraint = heightAnchor.constraint(equalToConstant: 0)
 
     private let titleFont: NSFont
+    private var stripHeight: CGFloat
 
-    init(titleFont: NSFont = .systemFont(ofSize: NSFont.smallSystemFontSize)) {
+    init(
+        titleFont: NSFont = .systemFont(ofSize: NSFont.smallSystemFontSize),
+        height: CGFloat = TabStripView.defaultHeight
+    ) {
         self.titleFont = titleFont
+        self.stripHeight = height
         super.init(frame: .zero)
         setup()
     }
@@ -102,10 +107,18 @@ final class TabStripView: NSView {
         newTabButton.contentTintColor = .labelColor
     }
 
+    /// Change the strip height, e.g. on config reload. A collapsed strip
+    /// (fewer than two tabs) stays collapsed and picks it up when it shows.
+    func updateHeight(_ height: CGFloat) {
+        guard height != stripHeight else { return }
+        stripHeight = height
+        if !tabsStack.isHidden { heightConstraint.constant = height }
+    }
+
     /// Collapse the strip with a single tab, like the native tab bar.
     private func applyVisibility(itemCount: Int) {
         let visible = itemCount >= 2
-        heightConstraint.constant = visible ? Self.height : 0
+        heightConstraint.constant = visible ? stripHeight : 0
         tabsStack.isHidden = !visible
         newTabButton.isHidden = !visible
     }

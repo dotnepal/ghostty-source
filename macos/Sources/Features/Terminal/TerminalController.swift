@@ -565,6 +565,9 @@ class TerminalController: BaseTerminalController, TabGroupCloseCoordinator.Contr
             self.derivedConfig = DerivedConfig(config)
             syncRestoration(config)
 
+            // Resize this window's bottom tab strip to the reloaded height.
+            terminalViewContainer?.tabStripView?.updateHeight(config.macosTabHeight)
+
             // If we have no surfaces in our window (is that possible?) then we update
             // our window appearance based on the root config. If we have surfaces, we
             // don't call this because focused surface changes will trigger appearance updates.
@@ -1122,7 +1125,8 @@ class TerminalController: BaseTerminalController, TabGroupCloseCoordinator.Contr
         // Initialize our content view to the SwiftUI root
         let container = TerminalViewContainer(
             showsTabStrip: config.macosTabsLocation == .bottom,
-            tabTitleFont: config.macosTabTitleFont
+            tabTitleFont: config.macosTabTitleFont,
+            tabHeight: config.macosTabHeight
         ) {
             TerminalView(ghostty: ghostty, viewModel: self, delegate: self)
         }

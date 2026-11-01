@@ -3478,6 +3478,8 @@ keybind: Keybinds = .{},
 /// option at runtime only applies to new windows.
 ///
 /// This setting is only supported on macOS.
+///
+/// Available since: 1.4.0
 @"macos-tab-title-font-size": f64 = 11,
 
 /// The font family of the tab titles in the bottom tab strip.
@@ -3492,6 +3494,8 @@ keybind: Keybinds = .{},
 /// option at runtime only applies to new windows.
 ///
 /// This setting is only supported on macOS.
+///
+/// Available since: 1.4.0
 @"macos-tab-title-font-family": ?[:0]const u8 = null,
 
 /// The height, in points, of the bottom tab strip. The default is 28.

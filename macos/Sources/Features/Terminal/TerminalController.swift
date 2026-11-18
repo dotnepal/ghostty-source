@@ -621,13 +621,14 @@ class TerminalController: BaseTerminalController, TabGroupCloseCoordinator.Contr
     }
 
     /// Re-runs the tab labels and strips once `closing` has left its tab group,
-    /// polling for a bounded number of runloop turns.
+    /// polling for at most `attemptsLeft` runloop turns.
     private func refreshTabsAfterRemoval(of closing: NSWindow, via remaining: NSWindow, attemptsLeft: Int) {
         DispatchQueue.main.async { [weak self, weak closing, weak remaining] in
             guard let remaining else { return }
+            // A deallocated `closing` is already gone from the group.
             let stillGrouped = closing.map { c in remaining.tabGroup?.windows.contains { $0 === c } ?? false } ?? false
-            if stillGrouped && attemptsLeft > 1 {
-                self?.refreshTabsAfterRemoval(of: closing!, via: remaining, attemptsLeft: attemptsLeft - 1)
+            if stillGrouped, let closing, attemptsLeft > 1 {
+                self?.refreshTabsAfterRemoval(of: closing, via: remaining, attemptsLeft: attemptsLeft - 1)
                 return
             }
             (remaining.windowController as? TerminalController)?.relabelTabs()

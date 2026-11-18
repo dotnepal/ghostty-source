@@ -620,6 +620,20 @@ class TerminalController: BaseTerminalController, TabGroupCloseCoordinator.Contr
         (window as? TerminalWindow)?.updateTabStrips()
     }
 
+    /// Re-runs the tab labels and strips once `closing` has left its tab group,
+    /// polling for a bounded number of runloop turns.
+    private func refreshTabsAfterRemoval(of closing: NSWindow, via remaining: NSWindow, attemptsLeft: Int) {
+        DispatchQueue.main.async { [weak self, weak closing, weak remaining] in
+            guard let remaining else { return }
+            let stillGrouped = closing.map { c in remaining.tabGroup?.windows.contains { $0 === c } ?? false } ?? false
+            if stillGrouped && attemptsLeft > 1 {
+                self?.refreshTabsAfterRemoval(of: closing!, via: remaining, attemptsLeft: attemptsLeft - 1)
+                return
+            }
+            (remaining.windowController as? TerminalController)?.relabelTabs()
+        }
+    }
+
     private func fixTabBar() {
         // We do this to make sure that the tab bar will always re-composite. If we don't,
         // then the it will "drag" pieces of the background with it when a transparent
@@ -1246,12 +1260,14 @@ class TerminalController: BaseTerminalController, TabGroupCloseCoordinator.Contr
     override func windowWillClose(_ notification: Notification) {
         super.windowWillClose(notification)
         cancelPendingInitialPresentation()
+        (window as? TerminalWindow)?.isClosingForTabStrip = true
         self.relabelTabs()
 
         // The closing window is still in its tab group here, so refresh the
-        // strips again once it has been removed.
-        if let remaining = window?.tabGroup?.windows.first(where: { $0 !== window }) as? TerminalWindow {
-            DispatchQueue.main.async { [weak remaining] in remaining?.updateTabStrips() }
+        // strips and tab labels again once AppKit has removed it.
+        if let closing = window,
+           let remaining = closing.tabGroup?.windows.first(where: { $0 !== closing }) {
+            refreshTabsAfterRemoval(of: closing, via: remaining, attemptsLeft: 5)
         }
 
         // If we remove a window, we reset the cascade point to the key window so that

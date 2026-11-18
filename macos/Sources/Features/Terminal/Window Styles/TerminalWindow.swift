@@ -241,7 +241,12 @@ class TerminalWindow: NSWindow {
         super.sendEvent(event)
     }
 
+    /// True once this window has started closing. AppKit keeps it in its tab group
+    /// for a moment longer, so the bottom tab strip must skip it.
+    var isClosingForTabStrip = false
+
     override func close() {
+        isClosingForTabStrip = true
         tabTitleEditor.finishEditing(commit: true)
         NotificationCenter.default.post(name: Self.terminalWillCloseNotification, object: self)
         super.close()
@@ -427,8 +432,12 @@ class TerminalWindow: NSWindow {
         hideNativeTabBarIfNeeded()
         DispatchQueue.main.async { [weak self] in self?.hideNativeTabBarIfNeeded() }
 
-        let windows = tabGroup?.windows ?? [self]
-        let selected = tabGroup?.selectedWindow
+        let windows = (tabGroup?.windows ?? [self]).filter {
+            !(($0 as? TerminalWindow)?.isClosingForTabStrip ?? false)
+        }
+        let selected = tabGroup?.selectedWindow.flatMap { selected in
+            windows.contains { $0 === selected } ? selected : nil
+        }
         let items = windows.map { window in
             let terminalWindow = window as? TerminalWindow
             let shortcut = terminalWindow?.keyEquivalent
